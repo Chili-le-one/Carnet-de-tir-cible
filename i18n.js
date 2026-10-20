@@ -13,10 +13,11 @@
 
   var EXACT = {
     "5 à 1": "5 to 1",
-    "Thème": "Theme", "Carnet de terrain (papier, encre bleue)": "Field notebook (paper, blue ink)", "Clair": "Light", "Nuit": "Night",
-    "Automatique (clair ou nuit selon le téléphone)": "Automatic (light or dark, following the phone)",
+    "Thème": "Theme", "Carnet de terrain (papier, encre bleue)": "Field notebook (paper, blue ink)",
+    "Thème d'origine (clair ou nuit selon le téléphone)": "Original theme (light or dark, following the phone)",
+    "Clair (d'origine)": "Light (original)", "Nuit (d'origine)": "Night (original)",
     "Chiffres clés": "Key figures", "Disposition": "Layout", "Résumé": "Summary", "Régularité": "Consistency", "Répartition": "Distribution",
-    "Saisie des flèches": "Arrow entry", "Volée en cours": "Current end", "Page Saisie": "Scoring page", "Page Stats": "Stats page",
+    "Boutons Clavier / Cible": "Keypad / Target buttons", "Saisie des flèches": "Arrow entry", "Volée en cours": "Current end", "Page Saisie": "Scoring page", "Page Stats": "Stats page",
     "Choisissez l'ordre des fenêtres de chaque page avec les flèches ↑ ↓.": "Choose the order of the blocks on each page with the ↑ ↓ arrows.",
     "Rétablir l'ordre par défaut": "Restore default order", "Ordre par défaut rétabli.": "Default order restored.",
     "Touchez ↑ ↓ pour déplacer les fenêtres": "Tap ↑ ↓ to move the blocks", "Rétablir": "Reset", "Terminé": "Done",

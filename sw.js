@@ -2,11 +2,11 @@
    La page est toujours rechargée depuis le réseau quand il y en a un (les mises à jour
    apparaissent donc dès l'ouverture suivante) ; le cache ne sert qu'en secours hors ligne.
    Changez le numéro de version ci-dessous à chaque mise à jour de l'application. */
-const CACHE = 'carnet-tir-cible-v13';
+const CACHE = 'carnet-tir-cible-v16';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './i18n.js', './themes.css', './style.css', './app.js', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => Promise.all(ASSETS.map(f => c.add(f).catch(() => {})))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {

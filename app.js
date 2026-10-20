@@ -1573,11 +1573,11 @@ async function resetAll() {
 }
 
 /* ---------- Actions (délégation d'événements) ---------- */
-const APP_VERSION = 'v13 · 20 oct. 2026';
+const APP_VERSION = 'v16 · 20 oct. 2026';
 let deferredInstall = null;
 /* ---------- Ordre des fenêtres (pages Saisie et Stats) ---------- */
 const ORD_LABELS = {
-  statut: 'Résumé', volee: 'Volée en cours', saisie: 'Saisie des flèches', notes: 'Notes de la séance', feuille: 'Feuille de marque',
+  statut: 'Résumé', volee: 'Volée en cours', mode: 'Boutons Clavier / Cible', saisie: 'Saisie des flèches', notes: 'Notes de la séance', feuille: 'Feuille de marque',
   kpis: 'Chiffres clés', objectif: 'Objectif', evolution: 'Évolution', regularite: 'Régularité', repartition: 'Répartition',
   carte: 'Carte des impacts', volees: 'Cartographie par volée', records: 'Records', volume: "Volume d'entraînement"
 };
@@ -1587,6 +1587,8 @@ const ordIds = tab => ordBlocks(tab).sort((a, b) => a.style.order - b.style.orde
 
 function applyOrder() {
   const saved = store.get(KEYS.order, {});
+  const ids = saved.shoot || [];            // ancien ordre enregistré : les boutons de mode se placent juste avant la saisie
+  if (ids.includes('saisie') && !ids.includes('mode')) ids.splice(ids.indexOf('saisie'), 0, 'mode');
   ['shoot', 'stats'].forEach(tab => ordBlocks(tab).forEach((el, i) => {
     const k = (saved[tab] || []).indexOf(el.dataset.ord);
     el.style.order = k < 0 ? 1000 + i : k;       // fenêtres inconnues : à la fin, dans l'ordre d'origine
