@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="fr" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Archery Scorekeeper Pro - Tir à l'Arc Indoor</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        waYellow: '#FFD100',
+                        waRed: '#EE334E',
+                        waBlue: '#00A4E4',
+                        waBlack: '#111111',
+                        waWhite: '#FFFFFF',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons & Chart.js -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
+            background-color: #f8fafc;
+            color: #0f172a;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        /* Official World Archery Rings SVG Styles */
+        .ring-10 { fill: #FFD100; stroke: #c7a300; stroke-width: 0.4; }
+        .ring-9  { fill: #FFD100; stroke: #c7a300; stroke-width: 0.4; }
+        .ring-8  { fill: #EE334E; stroke: #b81c33; stroke-width: 0.4; }
+        .ring-7  { fill: #EE334E; stroke: #b81c33; stroke-width: 0.4; }
+        .ring-6  { fill: #00A4E4; stroke: #007bb0; stroke-width: 0.4; }
+        .ring-5  { fill: #00A4E4; stroke: #007bb0; stroke-width: 0.4; }
+        .ring-4  { fill: #111111; stroke: #000000; stroke-width: 0.4; }
+        .ring-3  { fill: #111111; stroke: #000000; stroke-width: 0.4; }
+        .ring-2  { fill: #FFFFFF; stroke: #94a3b8; stroke-width: 0.5; }
+        .ring-1  { fill: #FFFFFF; stroke: #94a3b8; stroke-width: 0.5; }
+
+        .target-crosshair { stroke: rgba(0,0,0,0.25); stroke-width: 0.3; }
+        .ring-black-line { stroke: #ffffff !important; opacity: 0.4; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col justify-between">
+
+    <!-- Header Navigation -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 px-4 py-2.5 flex justify-between items-center shadow-sm">
+        <div class="flex items-center space-x-2">
+            <div class="w-8 h-8 rounded-full bg-amber-400 flex items-center justify-center text-slate-950 font-black shadow-sm">
+                <i class="fa-solid fa-bullseye text-lg"></i>
+            </div>
+            <div>
+                <h1 class="text-base font-black tracking-tight text-slate-900 leading-none">ARCHERY SCORE</h1>
+                <span class="text-[10px] text-slate-500 font-medium">Saisie de Tir & Suivi</span>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            <button onclick="app.showNewSessionModal()" class="bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold px-3 py-1.5 rounded-lg text-xs shadow-sm flex items-center gap-1.5 transition active:scale-95">
+                <i class="fa-solid fa-plus"></i> Nouvelle
+            </button>
+        </div>
+    </header>
+
+    <!-- Modal Configuration / Reprise de Séance -->
+    <div id="start-session-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xl w-full max-w-md space-y-4">
+            
+            <!-- Notice pour Reprendre une Séance Inachevée -->
+            <div id="resume-banner" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-3.5 space-y-2">
+                <div class="flex items-center gap-2 text-amber-800 font-bold text-xs">
+                    <i class="fa-solid fa-clock-rotate-left text-amber-600 text-sm"></i>
+                    <span>Séance non terminée détectée</span>
+                </div>
+                <p class="text-[11px] text-slate-600" id="resume-banner-details">18m • Blason 40cm (Volée 3/10)</p>
+                <div class="flex gap-2 pt-1">
+                    <button onclick="app.resumeUnfinishedSession()" class="flex-1 bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold py-2 rounded-xl text-xs transition shadow-sm active:scale-95">
+                        <i class="fa-solid fa-play mr-1"></i> Reprendre
+                    </button>
+                    <button onclick="app.discardUnfinishedSession()" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-3 py-2 rounded-xl transition">
+                        Abandonner
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-sliders"></i>
+                    </div>
+                    <h2 class="text-base font-black text-slate-900">Configurer la Séance</h2>
+                </div>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-600 font-bold mb-1">Distance de Tir</label>
+                    <select id="modal-cfg-distance" onchange="app.checkModalCustomDist()" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium text-slate-800">
+                        <option value="18m">18 mètres (Salle)</option>
+                        <option value="25m">25 mètres</option>
+                        <option value="50m">50 mètres</option>
+                        <option value="70m">70 mètres</option>
+                        <option value="Custom">Autre (Personnalisée)</option>
+                    </select>
+                </div>
+
+                <div id="modal-custom-dist-container" class="hidden">
+                    <label class="block text-slate-600 font-bold mb-1">Distance Personnalisée</label>
+                    <input type="text" id="modal-cfg-custom-dist" placeholder="ex: 30m" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium text-slate-800">
+                </div>
+
+                <div>
+                    <label class="block text-slate-600 font-bold mb-1">Type de Blason</label>
+                    <select id="modal-cfg-target" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium text-slate-800">
+                        <option value="40">Blason 40 cm</option>
+                        <option value="Trispot">Trispot 40 cm (1 seul spot)</option>
+                        <option value="60">Blason 60 cm</option>
+                        <option value="80">Blason 80 cm</option>
+                        <option value="120">Blason 120 cm</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-slate-600 font-bold mb-1">Flèches par volée</label>
+                        <select id="modal-cfg-arrows-per-end" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium text-slate-800">
+                            <option value="3">3 flèches</option>
+                            <option value="6">6 flèches</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-600 font-bold mb-1">Nombre de volées</label>
+                        <input type="number" id="modal-cfg-total-ends" min="1" max="30" value="10" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium text-slate-800">
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <button onclick="app.startSessionFromModal()" class="w-full bg-amber-400 hover:bg-amber-500 text-slate-950 font-black p-3.5 rounded-2xl text-sm transition shadow-md active:scale-95 flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-play"></i> Démarrer le Tir
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Cartographie & Point Moyen Final (Affiche UNIQUEMENT en fin de séance) -->
+    <div id="precision-summary-modal" class="hidden fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xl w-full max-w-md space-y-4 max-h-[90vh] overflow-y-auto">
+            
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-bullseye"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-black text-slate-900">Bilan de Séance & Point Moyen</h2>
+                        <span class="text-[10px] text-slate-500 font-medium">Cartographie de tous les impacts</span>
+                    </div>
+                </div>
+                <button onclick="app.closePrecisionModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- SVG Target Cartography with All Session Impacts -->
+            <div class="relative w-full max-w-[260px] mx-auto aspect-square flex items-center justify-center my-1">
+                <svg id="svg-summary-target" viewBox="-110 -110 220 220" class="w-full h-full rounded-full shadow-inner border-2 border-slate-300">
+                    <circle cx="0" cy="0" r="100" class="ring-1" />
+                    <circle cx="0" cy="0" r="90" class="ring-2" />
+                    <circle cx="0" cy="0" r="80" class="ring-3 ring-black-line" />
+                    <circle cx="0" cy="0" r="70" class="ring-4 ring-black-line" />
+                    <circle cx="0" cy="0" r="60" class="ring-5" />
+                    <circle cx="0" cy="0" r="50" class="ring-6" />
+                    <circle cx="0" cy="0" r="40" class="ring-7" />
+                    <circle cx="0" cy="0" r="30" class="ring-8" />
+                    <circle cx="0" cy="0" r="20" class="ring-9" />
+                    <circle cx="0" cy="0" r="10" class="ring-10" />
+                    <circle cx="0" cy="0" r="5" class="ring-10" />
+                    <line x1="-100" y1="0" x2="100" y2="0" class="target-crosshair" />
+                    <line x1="0" y1="-100" x2="0" y2="100" class="target-crosshair" />
+                    <g id="svg-summary-all-impacts"></g>
+                    <g id="svg-summary-barycenter"></g>
+                </svg>
+            </div>
+
+            <!-- Precision Stats Metrics -->
+            <div class="grid grid-cols-2 gap-2 text-center text-xs">
+                <div class="bg-slate-50 p-2.5 rounded-2xl border border-slate-200">
+                    <span class="text-slate-400 text-[10px] font-bold uppercase block">Tendances / Décalage</span>
+                    <span id="precision-bias-text" class="font-black text-amber-600 text-sm">--</span>
+                </div>
+                <div class="bg-slate-50 p-2.5 rounded-2xl border border-slate-200">
+                    <span class="text-slate-400 text-[10px] font-bold uppercase block">Dispersion Moyenne</span>
+                    <span id="precision-dispersion-text" class="font-black text-slate-800 text-sm">--</span>
+                </div>
+            </div>
+
+            <button onclick="app.closePrecisionModalAndGoStats()" class="w-full bg-amber-400 hover:bg-amber-500 text-slate-950 font-black p-3 rounded-2xl text-xs transition shadow-sm active:scale-95 flex items-center justify-center gap-2">
+                <span>Voir les Statistiques</span> <i class="fa-solid fa-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Bottom Mobile Navigation Bar -->
+    <nav class="bg-white border-t border-slate-200 fixed bottom-0 left-0 right-0 z-40 px-2 py-1.5 flex justify-around items-center shadow-lg">
+        <button onclick="app.switchTab('shoot')" id="nav-shoot" class="tab-btn flex flex-col items-center py-1 px-4 text-amber-600 font-bold">
+            <i class="fa-solid fa-crosshair text-lg mb-0.5"></i>
+            <span class="text-[11px]">Saisie</span>
+        </button>
+        <button onclick="app.switchTab('stats')" id="nav-stats" class="tab-btn flex flex-col items-center py-1 px-4 text-slate-500 hover:text-slate-800">
+            <i class="fa-solid fa-chart-pie text-lg mb-0.5"></i>
+            <span class="text-[11px]">Statistiques</span>
+        </button>
+        <button onclick="app.switchTab('history')" id="nav-history" class="tab-btn flex flex-col items-center py-1 px-4 text-slate-500 hover:text-slate-800">
+            <i class="fa-solid fa-list text-lg mb-0.5"></i>
+            <span class="text-[11px]">Historique</span>
+        </button>
+        <button onclick="app.switchTab('settings')" id="nav-settings" class="tab-btn flex flex-col items-center py-1 px-4 text-slate-500 hover:text-slate-800">
+            <i class="fa-solid fa-gear text-lg mb-0.5"></i>
+            <span class="text-[11px]">Réglages</span>
+        </button>
+    </nav>
+
+    <main class="flex-1 p-3 pb-20 max-w-lg mx-auto w-full">
+
+        <!-- TAB 1: SAISIE DES SCORES -->
+        <section id="tab-shoot" class="tab-content space-y-3">
+            
+            <!-- Header Summary Card with Pause / Save Button -->
+            <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm flex justify-between items-center">
+                <div>
+                    <div class="flex items-center gap-1.5">
+                        <span id="disp-config" class="text-xs font-bold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-md border border-slate-200">18m • 40cm</span>
+                        <span id="disp-mode" class="text-xs font-bold bg-amber-100 text-amber-800 px-2 py-1 rounded-md border border-amber-200">Mode Rapide</span>
+                    </div>
+                    <div class="text-xs text-slate-500 mt-1.5 font-medium flex items-center gap-2">
+                        <span>Volée <span id="disp-ends-progress" class="font-bold text-slate-900">1/10</span></span>
+                        <button onclick="app.pauseAndSaveSession()" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2 py-0.5 rounded-md border border-slate-300 transition">
+                            <i class="fa-solid fa-floppy-disk text-amber-600"></i> Pause & Quitter
+                        </button>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-3xl font-black text-amber-500 leading-none" id="disp-total-score">0</div>
+                    <div class="text-[10px] text-slate-500 mt-0.5 font-medium">Moy: <span id="disp-avg-arrow" class="text-slate-800 font-bold">0.0</span> / flèche</div>
+                </div>
+            </div>
+
+            <!-- Mode Switcher (Rapide vs Impact) -->
+            <div class="grid grid-cols-2 bg-slate-200 p-1 rounded-xl gap-1 text-xs font-bold">
+                <button id="btn-mode-fast" onclick="app.setEntryMode('fast')" class="py-2 rounded-lg bg-white text-slate-900 shadow-sm transition">
+                    <i class="fa-solid fa-bolt text-amber-500 mr-1"></i> Mode Rapide
+                </button>
+                <button id="btn-mode-impact" onclick="app.setEntryMode('impact')" class="py-2 rounded-lg text-slate-600 hover:text-slate-900 transition">
+                    <i class="fa-solid fa-bullseye text-red-500 mr-1"></i> Mode Cartographie
+                </button>
+            </div>
+
+            <!-- Volée Actuelle - Badges -->
+            <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm space-y-2">
+                <div class="flex justify-between items-center">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Volée Actuelle</span>
+                    <div class="space-x-1">
+                        <button onclick="app.undoArrow()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-lg transition active:scale-95">
+                            <i class="fa-solid fa-rotate-left mr-1"></i> Annuler
+                        </button>
+                        <button onclick="app.clearCurrentEnd()" class="text-xs bg-red-50 hover:bg-red-100 text-red-600 font-bold px-2.5 py-1 rounded-lg transition active:scale-95">
+                            Effacer
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Slots Dynamiques -->
+                <div id="current-arrows-list" class="flex flex-wrap gap-2 justify-center py-1.5 min-h-[48px] items-center bg-slate-50 rounded-xl border border-slate-200">
+                    <!-- Généré par JS -->
+                </div>
+            </div>
+
+            <!-- ZONE CIBLE SVG (Masquée en Mode Rapide) -->
+            <div id="target-container" class="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm relative">
+                
+                <div class="relative w-full max-w-[320px] mx-auto aspect-square flex items-center justify-center my-1">
+                    <svg id="svg-target" viewBox="-110 -110 220 220" class="w-full h-full cursor-pointer touch-none select-none rounded-full shadow-inner border-2 border-slate-300">
+                        <circle cx="0" cy="0" r="100" class="ring-1" />
+                        <circle cx="0" cy="0" r="90" class="ring-2" />
+                        <circle cx="0" cy="0" r="80" class="ring-3 ring-black-line" />
+                        <circle cx="0" cy="0" r="70" class="ring-4 ring-black-line" />
+                        <circle cx="0" cy="0" r="60" class="ring-5" />
+                        <circle cx="0" cy="0" r="50" class="ring-6" />
+                        <circle cx="0" cy="0" r="40" class="ring-7" />
+                        <circle cx="0" cy="0" r="30" class="ring-8" />
+                        <circle cx="0" cy="0" r="20" class="ring-9" />
+                        <circle cx="0" cy="0" r="10" class="ring-10" />
+                        <circle cx="0" cy="0" r="5" class="ring-10" />
+                        
+                        <line x1="-100" y1="0" x2="100" y2="0" class="target-crosshair" />
+                        <line x1="0" y1="-100" x2="0" y2="100" class="target-crosshair" />
+                        
+                        <g id="svg-impacts-group"></g>
+                        <g id="svg-barycenter-group"></g>
+                    </svg>
+
+                    <!-- Bouton X Indépendant en Haut à Droite -->
+                    <button onclick="app.addArrowScore('X')" class="absolute top-0 right-0 bg-amber-400 hover:bg-amber-300 active:scale-90 text-slate-950 font-black rounded-2xl w-14 h-14 shadow-md border-2 border-amber-200 flex flex-col items-center justify-center transition">
+                        <span class="text-xl leading-none">X</span>
+                        <span class="text-[9px] font-bold opacity-80 uppercase">10-Int</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- PAVÉ DE SAISIE RAPIDE (Affiché en Mode Rapide) -->
+            <div id="fast-keypad" class="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm relative space-y-2">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Pavé Tactile Ultra-Rapide</span>
+                    <button onclick="app.addArrowScore('X')" class="bg-amber-400 hover:bg-amber-300 active:scale-95 text-slate-950 font-black rounded-xl px-3 py-1.5 shadow-sm text-xs border border-amber-300">
+                        Bouton X (10-Int)
+                    </button>
+                </div>
+                
+                <div class="grid grid-cols-5 gap-2">
+                    <button onclick="app.addArrowScore('10')" class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-4 rounded-xl text-xl shadow-sm active:scale-95 transition">10</button>
+                    <button onclick="app.addArrowScore('9')" class="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black py-4 rounded-xl text-xl shadow-sm active:scale-95 transition">9</button>
+                    <button onclick="app.addArrowScore('8')" class="bg-red-500 hover:bg-red-600 text-white font-black py-4 rounded-xl text-xl shadow-sm active:scale-95 transition">8</button>
+                    <button onclick="app.addArrowScore('7')" class="bg-red-500 hover:bg-red-600 text-white font-black py-4 rounded-xl text-xl shadow-sm active:scale-95 transition">7</button>
+                    <button onclick="app.addArrowScore('6')" class="bg-sky-500 hover:bg-sky-600 text-white font-black py-4 rounded-xl text-xl shadow-sm active:scale-95 transition">6</button>
+                    <button onclick="app.addArrowScore('5')" class="bg-sky-500 hover:bg-sky-600 text-white font-black py-4 rounded-xl text-xl shadow-sm active:scale-95 transition">5</button>
+                    <button onclick="app.addArrowScore('4')" class="bg-slate-900 hover:bg-slate-800 text-white font-black py-4 rounded-xl text-xl shadow-sm active:scale-95 transition">4</button>
+                    <button onclick="app.addArrowScore('3')" class="bg-slate-900 hover:bg-slate-800 text-white font-black py-4 rounded-xl text-xl shadow-sm active:scale-95 transition">3</button>
+                    <button onclick="app.addArrowScore('2')" class="bg-slate-100 hover:bg-slate-200 text-slate-900 font-black py-4 rounded-xl text-xl border border-slate-300 shadow-sm active:scale-95 transition">2</button>
+                    <button onclick="app.addArrowScore('1')" class="bg-slate-100 hover:bg-slate-200 text-slate-900 font-black py-4 rounded-xl text-xl border border-slate-300 shadow-sm active:scale-95 transition">1</button>
+                </div>
+                <button onclick="app.addArrowScore('M')" class="w-full bg-red-50 hover:bg-red-100 text-red-600 font-black py-2.5 rounded-xl text-sm border border-red-200 shadow-sm active:scale-95 transition">
+                    Manqué (M / 0)
+                </button>
+            </div>
+
+            <!-- Feuille de marque -->
+            <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm overflow-x-auto">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Feuille de Marque</h3>
+                <table class="w-full text-center text-xs">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+                            <th class="py-2 px-2">Volée</th>
+                            <th class="py-2 px-2">Flèches</th>
+                            <th class="py-2 px-2">Total</th>
+                            <th class="py-2 px-2">Cumul</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scorecard-body" class="divide-y divide-slate-100">
+                        <!-- Lignes de la feuille de marque -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- TAB 2: STATISTIQUES -->
+        <section id="tab-stats" class="tab-content hidden space-y-4">
+            
+            <div class="bg-white rounded-2xl p-3 border border-slate-200 shadow-sm space-y-2">
+                <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Filtrer l'Analyse</div>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                        <label class="block text-slate-500 text-[10px] mb-1 font-semibold">Distance</label>
+                        <select id="stat-filter-dist" onchange="app.renderStats()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-medium text-slate-800">
+                            <option value="ALL">Toutes les distances</option>
+                            <option value="18m">18 mètres</option>
+                            <option value="25m">25 mètres</option>
+                            <option value="50m">50 mètres</option>
+                            <option value="70m">70 mètres</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-slate-500 text-[10px] mb-1 font-semibold">Blason</label>
+                        <select id="stat-filter-target" onchange="app.renderStats()" class="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-medium text-slate-800">
+                            <option value="ALL">Tous les blasons</option>
+                            <option value="40">40 cm</option>
+                            <option value="60">60 cm</option>
+                            <option value="80">80 cm</option>
+                            <option value="120">120 cm</option>
+                            <option value="Trispot">Trispot</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div class="bg-white p-3 rounded-2xl border border-slate-200 text-center shadow-sm">
+                    <div class="text-slate-400 text-[10px] uppercase font-bold">Meilleur Score</div>
+                    <div id="kpi-best-score" class="text-2xl font-black text-amber-500 mt-0.5">--</div>
+                </div>
+                <div class="bg-white p-3 rounded-2xl border border-slate-200 text-center shadow-sm">
+                    <div class="text-slate-400 text-[10px] uppercase font-bold">Moy. / Volée</div>
+                    <div id="kpi-avg-end" class="text-2xl font-black text-emerald-600 mt-0.5">--</div>
+                </div>
+                <div class="bg-white p-3 rounded-2xl border border-slate-200 text-center shadow-sm">
+                    <div class="text-slate-400 text-[10px] uppercase font-bold">% 10 & X</div>
+                    <div id="kpi-gold-pct" class="text-2xl font-black text-amber-500 mt-0.5">--</div>
+                </div>
+                <div class="bg-white p-3 rounded-2xl border border-slate-200 text-center shadow-sm">
+                    <div class="text-slate-400 text-[10px] uppercase font-bold">Nb Flèches</div>
+                    <div id="kpi-total-arrows" class="text-2xl font-black text-sky-600 mt-0.5">0</div>
+                </div>
+            </div>
+
+            <!-- Graphique 1: Évolution des scores -->
+            <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-600 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-amber-500"></i> Évolution des Scores
+                </h3>
+                <div class="h-48 w-full">
+                    <canvas id="chart-evolution"></canvas>
+                </div>
+            </div>
+
+            <!-- Graphique 2: Répartition par Zones -->
+            <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-600 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-chart-pie text-red-500"></i> Répartition des Zones
+                </h3>
+                <div class="h-48 w-full flex justify-center">
+                    <canvas id="chart-distribution"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: HISTORIQUE -->
+        <section id="tab-history" class="tab-content hidden space-y-3">
+            <div class="flex justify-between items-center bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
+                <h2 class="text-sm font-bold text-slate-800">Historique des Séances</h2>
+                <button onclick="app.exportAllJSON()" class="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg font-bold text-slate-700 transition flex items-center gap-1">
+                    <i class="fa-solid fa-download"></i> Export JSON
+                </button>
+            </div>
+            <div id="sessions-list-container" class="space-y-2">
+                <!-- Généré via JS -->
+            </div>
+        </section>
+
+        <!-- TAB 4: REGLAGES -->
+        <section id="tab-settings" class="tab-content hidden space-y-4">
+            <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-4">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-amber-600 border-b border-slate-100 pb-2">Nouvelle Séance</h2>
+                
+                <div class="space-y-3 text-xs">
+                    <div>
+                        <label class="block text-slate-600 font-bold mb-1">Distance de Tir</label>
+                        <select id="cfg-distance" onchange="app.checkCustomDist()" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium text-slate-800">
+                            <option value="18m">18 mètres (Salle)</option>
+                            <option value="25m">25 mètres</option>
+                            <option value="50m">50 mètres</option>
+                            <option value="70m">70 mètres</option>
+                            <option value="Custom">Autre (Personnalisée)</option>
+                        </select>
+                    </div>
+
+                    <div id="custom-dist-container" class="hidden">
+                        <label class="block text-slate-600 font-bold mb-1">Préciser la Distance</label>
+                        <input type="text" id="cfg-custom-dist" placeholder="ex: 30m" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium text-slate-800">
+                    </div>
+
+                    <div>
+                        <label class="block text-slate-600 font-bold mb-1">Type de Blason</label>
+                        <select id="cfg-target" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium text-slate-800">
+                            <option value="40">Blason 40 cm</option>
+                            <option value="Trispot">Trispot 40 cm (1 seul spot)</option>
+                            <option value="60">Blason 60 cm</option>
+                            <option value="80">Blason 80 cm</option>
+                            <option value="120">Blason 120 cm</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-slate-600 font-bold mb-1">Flèches par volée</label>
+                            <select id="cfg-arrows-per-end" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium text-slate-800">
+                                <option value="3">3 flèches</option>
+                                <option value="6">6 flèches</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-slate-600 font-bold mb-1">Nombre de volées</label>
+                            <input type="number" id="cfg-total-ends" min="1" max="30" value="10" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium text-slate-800">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <button onclick="app.applyNewSettings()" class="w-full bg-amber-400 hover:bg-amber-500 text-slate-950 font-bold p-3 rounded-xl text-xs transition shadow-sm active:scale-95">
+                        Lancer une Nouvelle Séance
+                    </button>
+                </div>
+            </div>
+
+            <!-- Exportation -->
+            <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-3">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-700 border-b border-slate-100 pb-2">Données & Exporation</h2>
+                <div class="grid grid-cols-2 gap-2 text-xs">
+                    <button onclick="app.exportCSV()" class="bg-slate-100 hover:bg-slate-200 p-3 rounded-xl text-slate-800 font-bold transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-csv text-emerald-600 text-base"></i> Export CSV
+                    </button>
+                    <button onclick="app.exportAllJSON()" class="bg-slate-100 hover:bg-slate-200 p-3 rounded-xl text-slate-800 font-bold transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-file-code text-amber-600 text-base"></i> Export JSON
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        /**
+         * Archery Scorekeeper Engine
+         */
+        class ArcheryApp {
+            constructor() {
+                this.storageKey = 'archery_app_sessions_v3';
+                this.unfinishedKey = 'archery_app_unfinished_v3';
+                
+                this.sessions = this.loadSessions();
+                this.currentSession = null;
+                
+                this.entryMode = 'fast'; // 'fast' ou 'impact'
+                
+                // Chart instances
+                this.chartEvol = null;
+                this.chartDist = null;
+
+                this.initApp();
+            }
+
+            initApp() {
+                this.bindEvents();
+                
+                // Vérifier s'il existe une séance non terminée
+                const unfinished = this.loadUnfinishedSession();
+                if (unfinished) {
+                    this.showResumeBanner(unfinished);
+                    this.showNewSessionModal();
+                } else {
+                    this.currentSession = this.createNewSessionObj();
+                    this.renderCurrentSession();
+                }
+                
+                this.setEntryMode('fast');
+            }
+
+            bindEvents() {
+                const svg = document.getElementById('svg-target');
+                svg.addEventListener('click', (e) => {
+                    if (this.entryMode !== 'impact') return;
+                    this.handleTargetClick(e);
+                });
+            }
+
+            showResumeBanner(session) {
+                const banner = document.getElementById('resume-banner');
+                const details = document.getElementById('resume-banner-details');
+                const endProgress = session.currentEndIndex + 1;
+                details.innerText = `${session.config.distance} • Blason ${session.config.targetType}cm (Volée ${endProgress}/${session.config.totalEnds})`;
+                banner.classList.remove('hidden');
+            }
+
+            resumeUnfinishedSession() {
+                const unfinished = this.loadUnfinishedSession();
+                if (unfinished) {
+                    this.currentSession = unfinished;
+                    this.renderCurrentSession();
+                    this.updateUIConfigDisp();
+                    document.getElementById('start-session-modal').classList.add('hidden');
+                    this.switchTab('shoot');
+                }
+            }
+
+            discardUnfinishedSession() {
+                localStorage.removeItem(this.unfinishedKey);
+                document.getElementById('resume-banner').classList.add('hidden');
+            }
+
+            pauseAndSaveSession() {
+                if (this.currentSession) {
+                    this.saveUnfinishedSession(this.currentSession);
+                    alert("Séance mise en pause et sauvegardée ! Vous pourrez la reprendre à tout moment.");
+                    this.showNewSessionModal();
+                }
+            }
+
+            checkModalCustomDist() {
+                const val = document.getElementById('modal-cfg-distance').value;
+                const customContainer = document.getElementById('modal-custom-dist-container');
+                if (val === 'Custom') customContainer.classList.remove('hidden');
+                else customContainer.classList.add('hidden');
+            }
+
+            showNewSessionModal() {
+                const unfinished = this.loadUnfinishedSession();
+                if (unfinished) {
+                    this.showResumeBanner(unfinished);
+                } else {
+                    document.getElementById('resume-banner').classList.add('hidden');
+                }
+                document.getElementById('start-session-modal').classList.remove('hidden');
+            }
+
+            startSessionFromModal() {
+                let dist = document.getElementById('modal-cfg-distance').value;
+                if (dist === 'Custom') {
+                    dist = document.getElementById('modal-cfg-custom-dist').value || 'Perso';
+                }
+                const target = document.getElementById('modal-cfg-target').value;
+                const arrows = document.getElementById('modal-cfg-arrows-per-end').value;
+                const ends = document.getElementById('modal-cfg-total-ends').value;
+
+                this.discardUnfinishedSession();
+                this.currentSession = this.createNewSessionObj(dist, target, arrows, ends);
+                this.saveUnfinishedSession(this.currentSession);
+                this.updateUIConfigDisp();
+                this.renderCurrentSession();
+                document.getElementById('start-session-modal').classList.add('hidden');
+                this.switchTab('shoot');
+            }
+
+            createNewSessionObj(dist = '18m', target = '40', arrowsPerEnd = 3, totalEnds = 10) {
+                return {
+                    id: 'session_' + Date.now(),
+                    date: new Date().toISOString(),
+                    config: {
+                        distance: dist,
+                        targetType: target,
+                        arrowsPerEnd: parseInt(arrowsPerEnd),
+                        totalEnds: parseInt(totalEnds)
+                    },
+                    currentEndIndex: 0,
+                    ends: []
+                };
+            }
+
+            loadSessions() {
+                try { return JSON.parse(localStorage.getItem(this.storageKey)) || []; }
+                catch(e) { return []; }
+            }
+
+            saveSessions() {
+                localStorage.setItem(this.storageKey, JSON.stringify(this.sessions));
+            }
+
+            loadUnfinishedSession() {
+                try { return JSON.parse(localStorage.getItem(this.unfinishedKey)); }
+                catch(e) { return null; }
+            }
+
+            saveUnfinishedSession(session) {
+                localStorage.setItem(this.unfinishedKey, JSON.stringify(session));
+            }
+
+            setEntryMode(mode) {
+                this.entryMode = mode;
+                const btnFast = document.getElementById('btn-mode-fast');
+                const btnImpact = document.getElementById('btn-mode-impact');
+                const targetContainer = document.getElementById('target-container');
+                const keypad = document.getElementById('fast-keypad');
+
+                if (mode === 'fast') {
+                    btnFast.className = "py-2 rounded-lg bg-white text-slate-900 shadow-sm transition";
+                    btnImpact.className = "py-2 rounded-lg text-slate-600 hover:text-slate-900 transition";
+                    targetContainer.classList.add('hidden');
+                    keypad.classList.remove('hidden');
+                    document.getElementById('disp-mode').innerText = "Mode Rapide";
+                } else {
+                    btnImpact.className = "py-2 rounded-lg bg-white text-slate-900 shadow-sm transition";
+                    btnFast.className = "py-2 rounded-lg text-slate-600 hover:text-slate-900 transition";
+                    targetContainer.classList.remove('hidden');
+                    keypad.classList.add('hidden');
+                    document.getElementById('disp-mode').innerText = "Mode Cartographie";
+                }
+                this.renderTargetImpacts();
+            }
+
+            addArrowScore(valStr, coordX = null, coordY = null) {
+                let numericVal = 0;
+                if (valStr === 'X' || valStr === '10') numericVal = 10;
+                else if (valStr === 'M') numericVal = 0;
+                else numericVal = parseInt(valStr) || 0;
+
+                const curEndIdx = this.currentSession.currentEndIndex;
+                if (!this.currentSession.ends[curEndIdx]) {
+                    this.currentSession.ends[curEndIdx] = [];
+                }
+
+                const arrowsInEnd = this.currentSession.ends[curEndIdx];
+                const maxArrows = this.currentSession.config.arrowsPerEnd;
+
+                if (arrowsInEnd.length < maxArrows) {
+                    arrowsInEnd.push({
+                        valStr: valStr,
+                        scoreVal: numericVal,
+                        x: coordX,
+                        y: coordY
+                    });
+
+                    this.saveUnfinishedSession(this.currentSession);
+                    this.renderCurrentSession();
+
+                    // Passage à la volée suivante
+                    if (arrowsInEnd.length >= maxArrows) {
+                        if (curEndIdx >= this.currentSession.config.totalEnds - 1) {
+                            // FIN DE SÉANCE : Affichage du Bilan Final avec Cartographie
+                            this.autoArchiveSession();
+                            this.discardUnfinishedSession();
+                            this.showFinalPrecisionSummaryModal();
+                        } else {
+                            // Volée suivante simple
+                            this.currentSession.currentEndIndex++;
+                            this.saveUnfinishedSession(this.currentSession);
+                            this.renderCurrentSession();
+                        }
+                    }
+                }
+            }
+
+            showFinalPrecisionSummaryModal() {
+                const modal = document.getElementById('precision-summary-modal');
+
+                // Génération de la cartographie globale
+                const impactsGroup = document.getElementById('svg-summary-all-impacts');
+                const barycenterGroup = document.getElementById('svg-summary-barycenter');
+                impactsGroup.innerHTML = '';
+                barycenterGroup.innerHTML = '';
+
+                let sumX = 0, sumY = 0, count = 0;
+                let distances = [];
+
+                this.currentSession.ends.forEach((end) => {
+                    end.forEach((a) => {
+                        if (a.x !== null && a.y !== null) {
+                            sumX += a.x;
+                            sumY += a.y;
+                            count++;
+
+                            const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                            circle.setAttribute('cx', a.x);
+                            circle.setAttribute('cy', a.y);
+                            circle.setAttribute('r', '3');
+                            circle.setAttribute('fill', '#0284c7');
+                            circle.setAttribute('stroke', '#ffffff');
+                            circle.setAttribute('stroke-width', '0.8');
+                            circle.setAttribute('opacity', '0.85');
+                            impactsGroup.appendChild(circle);
+                        }
+                    });
+                });
+
+                if (count > 0) {
+                    const avgX = sumX / count;
+                    const avgY = sumY / count;
+
+                    this.currentSession.ends.forEach((end) => {
+                        end.forEach((a) => {
+                            if (a.x !== null && a.y !== null) {
+                                const d = Math.sqrt(Math.pow(a.x - avgX, 2) + Math.pow(a.y - avgY, 2));
+                                distances.push(d);
+                            }
+                        });
+                    });
+
+                    const avgDispersion = distances.length > 0 ? (distances.reduce((a,b)=>a+b,0) / distances.length).toFixed(1) : 0;
+                    document.getElementById('precision-dispersion-text').innerText = `${avgDispersion} mm`;
+
+                    let vert = avgY < -5 ? "Haut" : (avgY > 5 ? "Bas" : "");
+                    let horiz = avgX < -5 ? "Gauche" : (avgX > 5 ? "Droite" : "");
+                    let biasText = [vert, horiz].filter(Boolean).join('-') || "Plein Centre";
+                    document.getElementById('precision-bias-text').innerText = biasText;
+
+                    // Point Moyen (Barycentre)
+                    const centerCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    centerCircle.setAttribute('cx', avgX);
+                    centerCircle.setAttribute('cy', avgY);
+                    centerCircle.setAttribute('r', '6');
+                    centerCircle.setAttribute('fill', '#dc2626');
+                    centerCircle.setAttribute('stroke', '#ffffff');
+                    centerCircle.setAttribute('stroke-width', '1.5');
+
+                    barycenterGroup.appendChild(centerCircle);
+                } else {
+                    document.getElementById('precision-bias-text').innerText = "Saisie Rapide (N/A)";
+                    document.getElementById('precision-dispersion-text').innerText = "N/A";
+                }
+
+                modal.classList.remove('hidden');
+            }
+
+            closePrecisionModal() {
+                document.getElementById('precision-summary-modal').classList.add('hidden');
+            }
+
+            closePrecisionModalAndGoStats() {
+                this.closePrecisionModal();
+                this.switchTab('stats');
+            }
+
+            undoArrow() {
+                const curEndIdx = this.currentSession.currentEndIndex;
+                let curEnd = this.currentSession.ends[curEndIdx];
+
+                if (curEnd && curEnd.length > 0) {
+                    curEnd.pop();
+                } else if (curEndIdx > 0) {
+                    this.currentSession.currentEndIndex--;
+                    this.currentSession.ends[this.currentSession.currentEndIndex].pop();
+                }
+
+                this.saveUnfinishedSession(this.currentSession);
+                this.renderCurrentSession();
+            }
+
+            clearCurrentEnd() {
+                const curEndIdx = this.currentSession.currentEndIndex;
+                this.currentSession.ends[curEndIdx] = [];
+                this.saveUnfinishedSession(this.currentSession);
+                this.renderCurrentSession();
+            }
+
+            handleTargetClick(e) {
+                const svg = document.getElementById('svg-target');
+                const rect = svg.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickY = e.clientY - rect.top;
+
+                const svgX = ((clickX / rect.width) * 220) - 110;
+                const svgY = ((clickY / rect.height) * 220) - 110;
+
+                const dist = Math.sqrt(svgX * svgX + svgY * svgY);
+
+                let valStr = 'M';
+                if (dist <= 5) valStr = 'X';
+                else if (dist <= 10) valStr = '10';
+                else if (dist <= 20) valStr = '9';
+                else if (dist <= 30) valStr = '8';
+                else if (dist <= 40) valStr = '7';
+                else if (dist <= 50) valStr = '6';
+                else if (dist <= 60) valStr = '5';
+                else if (dist <= 70) valStr = '4';
+                else if (dist <= 80) valStr = '3';
+                else if (dist <= 90) valStr = '2';
+                else if (dist <= 100) valStr = '1';
+
+                this.addArrowScore(valStr, Math.round(svgX), Math.round(svgY));
+            }
+
+            renderCurrentSession() {
+                const session = this.currentSession;
+                if (!session) return;
+
+                const curEndIdx = session.currentEndIndex;
+                const maxArrows = session.config.arrowsPerEnd;
+                const curEndArrows = session.ends[curEndIdx] || [];
+
+                // Badges Flèches
+                const slotsContainer = document.getElementById('current-arrows-list');
+                slotsContainer.innerHTML = '';
+
+                for (let i = 0; i < maxArrows; i++) {
+                    const arrow = curEndArrows[i];
+                    const slot = document.createElement('div');
+                    if (arrow) {
+                        slot.className = `w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm border shadow-sm ${this.getBadgeColor(arrow.valStr)}`;
+                        slot.innerText = arrow.valStr;
+                    } else {
+                        slot.className = `w-10 h-10 rounded-xl flex items-center justify-center font-bold text-xs border-2 border-dashed border-slate-300 text-slate-400 bg-white`;
+                        slot.innerText = i + 1;
+                    }
+                    slotsContainer.appendChild(slot);
+                }
+
+                // Tableau Feuille de Marque
+                const scorecardBody = document.getElementById('scorecard-body');
+                scorecardBody.innerHTML = '';
+                let cumulativeTotal = 0;
+
+                for (let e = 0; e < session.config.totalEnds; e++) {
+                    const endArrows = session.ends[e] || [];
+                    const endSum = endArrows.reduce((sum, a) => sum + a.scoreVal, 0);
+                    cumulativeTotal += endSum;
+
+                    const isCurrent = (e === curEndIdx);
+                    const tr = document.createElement('tr');
+                    tr.className = isCurrent ? "bg-amber-50 font-bold border-l-4 border-amber-400 text-slate-900" : "hover:bg-slate-50 text-slate-700";
+                    
+                    const arrowBadges = endArrows.map(a => `<span class="inline-block px-1.5 py-0.5 rounded-md text-[10px] font-black border ${this.getBadgeColor(a.valStr)}">${a.valStr}</span>`).join(' ');
+
+                    tr.innerHTML = `
+                        <td class="py-2.5 px-2 ${isCurrent ? 'text-amber-600 font-black' : ''}">#${e + 1}</td>
+                        <td class="py-2.5 px-2">${arrowBadges || '<span class="text-slate-300">-</span>'}</td>
+                        <td class="py-2.5 px-2 font-bold text-slate-900">${endSum}</td>
+                        <td class="py-2.5 px-2 text-slate-500 font-bold">${cumulativeTotal}</td>
+                    `;
+                    scorecardBody.appendChild(tr);
+                }
+
+                document.getElementById('disp-total-score').innerText = cumulativeTotal;
+                document.getElementById('disp-ends-progress').innerText = `${curEndIdx + 1}/${session.config.totalEnds}`;
+                
+                let totalArrowsCount = 0;
+                session.ends.forEach(arr => totalArrowsCount += arr.length);
+                const avg = totalArrowsCount > 0 ? (cumulativeTotal / totalArrowsCount).toFixed(1) : "0.0";
+                document.getElementById('disp-avg-arrow').innerText = avg;
+
+                this.renderTargetImpacts();
+            }
+
+            getBadgeColor(valStr) {
+                switch(valStr) {
+                    case 'X':
+                    case '10':
+                    case '9': return 'bg-amber-400 text-slate-950 border-amber-300';
+                    case '8':
+                    case '7': return 'bg-red-500 text-white border-red-600';
+                    case '6':
+                    case '5': return 'bg-sky-500 text-white border-sky-600';
+                    case '4':
+                    case '3': return 'bg-slate-900 text-white border-slate-950';
+                    case '2':
+                    case '1': return 'bg-slate-100 text-slate-900 border-slate-300';
+                    default: return 'bg-red-50 text-red-600 border-red-200';
+                }
+            }
+
+            renderTargetImpacts() {
+                const impactsGroup = document.getElementById('svg-impacts-group');
+                const barycenterGroup = document.getElementById('svg-barycenter-group');
+                if (!impactsGroup || !barycenterGroup) return;
+
+                impactsGroup.innerHTML = '';
+                barycenterGroup.innerHTML = '';
+
+                const curEndIdx = this.currentSession.currentEndIndex;
+                const curEndArrows = this.currentSession.ends[curEndIdx] || [];
+
+                curEndArrows.forEach((a, idx) => {
+                    if (a.x !== null && a.y !== null) {
+                        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                        circle.setAttribute('cx', a.x);
+                        circle.setAttribute('cy', a.y);
+                        circle.setAttribute('r', '3.5');
+                        circle.setAttribute('fill', '#0284c7');
+                        circle.setAttribute('stroke', '#ffffff');
+                        circle.setAttribute('stroke-width', '1');
+                        impactsGroup.appendChild(circle);
+                    }
+                });
+            }
+
+            autoArchiveSession() {
+                const existsIdx = this.sessions.findIndex(s => s.id === this.currentSession.id);
+                if (existsIdx >= 0) {
+                    this.sessions[existsIdx] = this.currentSession;
+                } else {
+                    this.sessions.unshift(this.currentSession);
+                }
+                this.saveSessions();
+            }
+
+            checkCustomDist() {
+                const val = document.getElementById('cfg-distance').value;
+                const customContainer = document.getElementById('custom-dist-container');
+                if (val === 'Custom') customContainer.classList.remove('hidden');
+                else customContainer.classList.add('hidden');
+            }
+
+            applyNewSettings() {
+                let dist = document.getElementById('cfg-distance').value;
+                if (dist === 'Custom') {
+                    dist = document.getElementById('cfg-custom-dist').value || 'Perso';
+                }
+                const target = document.getElementById('cfg-target').value;
+                const arrows = document.getElementById('cfg-arrows-per-end').value;
+                const ends = document.getElementById('cfg-total-ends').value;
+
+                this.discardUnfinishedSession();
+                this.currentSession = this.createNewSessionObj(dist, target, arrows, ends);
+                this.saveUnfinishedSession(this.currentSession);
+                this.updateUIConfigDisp();
+                this.renderCurrentSession();
+                this.switchTab('shoot');
+            }
+
+            updateUIConfigDisp() {
+                if (!this.currentSession) return;
+                const cfg = this.currentSession.config;
+                document.getElementById('disp-config').innerText = `${cfg.distance} • Blason ${cfg.targetType}`;
+            }
+
+            switchTab(tabId) {
+                document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+                document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.remove('text-amber-600', 'font-bold');
+                    btn.classList.add('text-slate-500');
+                });
+                
+                const activeNav = document.getElementById(`nav-${tabId}`);
+                if (activeNav) {
+                    activeNav.classList.remove('text-slate-500');
+                    activeNav.classList.add('text-amber-600', 'font-bold');
+                }
+
+                if (tabId === 'stats') {
+                    this.renderStats();
+                } else if (tabId === 'history') {
+                    this.renderHistoryList();
+                }
+            }
+
+            renderStats() {
+                const distFilter = document.getElementById('stat-filter-dist').value;
+                const targetFilter = document.getElementById('stat-filter-target').value;
+
+                let dataset = [...this.sessions];
+
+                if (distFilter !== 'ALL') dataset = dataset.filter(s => s.config.distance === distFilter);
+                if (targetFilter !== 'ALL') dataset = dataset.filter(s => s.config.targetType === targetFilter);
+
+                let bestScore = 0;
+                let totalEndsCount = 0;
+                let totalScoreSum = 0;
+                let totalArrowsCount = 0;
+                let tensAndXsCount = 0;
+
+                const distribution = { '10 / X': 0, '9': 0, '8': 0, '7': 0, '6': 0, '5-1': 0, 'M': 0 };
+
+                dataset.forEach(s => {
+                    let sTotal = 0;
+                    s.ends.forEach(end => {
+                        if (end && end.length > 0) {
+                            totalEndsCount++;
+                            end.forEach(arr => {
+                                totalArrowsCount++;
+                                totalScoreSum += arr.scoreVal;
+                                sTotal += arr.scoreVal;
+
+                                if (arr.valStr === 'X' || arr.valStr === '10') {
+                                    tensAndXsCount++;
+                                    distribution['10 / X']++;
+                                } else if (arr.valStr === '9') distribution['9']++;
+                                else if (arr.valStr === '8') distribution['8']++;
+                                else if (arr.valStr === '7') distribution['7']++;
+                                else if (arr.valStr === '6') distribution['6']++;
+                                else if (arr.scoreVal >= 1) distribution['5-1']++;
+                                else distribution['M']++;
+                            });
+                        }
+                    });
+                    if (sTotal > bestScore) bestScore = sTotal;
+                });
+
+                document.getElementById('kpi-best-score').innerText = bestScore;
+                document.getElementById('kpi-avg-end').innerText = totalEndsCount > 0 ? (totalScoreSum / totalEndsCount).toFixed(1) : '--';
+                document.getElementById('kpi-gold-pct').innerText = totalArrowsCount > 0 ? `${((tensAndXsCount / totalArrowsCount) * 100).toFixed(0)}%` : '--';
+                document.getElementById('kpi-total-arrows').innerText = totalArrowsCount;
+
+                // Evolution Chart
+                const labelsDates = dataset.map((s, idx) => `S. ${idx + 1}`);
+                const scoresData = dataset.map(s => {
+                    return s.ends.reduce((acc, end) => acc + end.reduce((sum, a) => sum + a.scoreVal, 0), 0);
+                });
+
+                if (this.chartEvol) this.chartEvol.destroy();
+                const ctxEvol = document.getElementById('chart-evolution').getContext('2d');
+                this.chartEvol = new Chart(ctxEvol, {
+                    type: 'line',
+                    data: {
+                        labels: labelsDates,
+                        datasets: [{
+                            label: 'Score Total',
+                            data: scoresData,
+                            borderColor: '#d97706',
+                            backgroundColor: 'rgba(217, 119, 6, 0.1)',
+                            borderWidth: 2.5,
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { grid: { color: '#f1f5f9' }, ticks: { color: '#64748b' } },
+                            x: { grid: { color: '#f1f5f9' }, ticks: { color: '#64748b' } }
+                        }
+                    }
+                });
+
+                // Distribution Chart
+                if (this.chartDist) this.chartDist.destroy();
+                const ctxDist = document.getElementById('chart-distribution').getContext('2d');
+                this.chartDist = new Chart(ctxDist, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(distribution),
+                        datasets: [{
+                            data: Object.values(distribution),
+                            backgroundColor: ['#FFD100', '#FFD100', '#EE334E', '#EE334E', '#00A4E4', '#e2e8f0', '#ef4444']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'right', labels: { color: '#334155', font: { size: 10, weight: 'bold' } } }
+                        }
+                    }
+                });
+            }
+
+            renderHistoryList() {
+                const container = document.getElementById('sessions-list-container');
+                container.innerHTML = '';
+
+                if (this.sessions.length === 0) {
+                    container.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs font-medium">Aucune séance enregistrée dans l'historique.</div>`;
+                    return;
+                }
+
+                this.sessions.forEach(s => {
+                    const totalScore = s.ends.reduce((acc, end) => acc + end.reduce((sum, a) => sum + a.scoreVal, 0), 0);
+                    const formattedDate = new Date(s.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+                    const item = document.createElement('div');
+                    item.className = "bg-white p-3 rounded-2xl border border-slate-200 flex justify-between items-center shadow-sm";
+                    item.innerHTML = `
+                        <div>
+                            <div class="font-black text-amber-600 text-base">${totalScore} points</div>
+                            <div class="text-[11px] text-slate-500 font-medium">${formattedDate} • ${s.config.distance} (${s.config.targetType}cm)</div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="app.loadSessionFromHistory('${s.id}')" class="text-xs bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg font-bold text-slate-700 transition">Consulter</button>
+                            <button onclick="app.deleteSession('${s.id}')" class="text-xs bg-red-50 hover:bg-red-100 text-red-600 px-2.5 py-1.5 rounded-lg font-bold transition"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    `;
+                    container.appendChild(item);
+                });
+            }
+
+            loadSessionFromHistory(id) {
+                const found = this.sessions.find(s => s.id === id);
+                if (found) {
+                    this.currentSession = JSON.parse(JSON.stringify(found));
+                    this.updateUIConfigDisp();
+                    this.renderCurrentSession();
+                    this.switchTab('shoot');
+                }
+            }
+
+            deleteSession(id) {
+                this.sessions = this.sessions.filter(s => s.id !== id);
+                this.saveSessions();
+                this.renderHistoryList();
+            }
+
+            exportAllJSON() {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.sessions, null, 2));
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.setAttribute("href", dataStr);
+                downloadAnchor.setAttribute("download", `archery_scores_${new Date().toISOString().slice(0,10)}.json`);
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                downloadAnchor.remove();
+            }
+
+            exportCSV() {
+                let csv = "SessionID;Date;Distance;Blason;Volee;Fleche_Num;ScoreVal;ScoreStr;X;Y\n";
+                this.sessions.forEach(s => {
+                    s.ends.forEach((end, eIdx) => {
+                        end.forEach((arr, aIdx) => {
+                            csv += `${s.id};${s.date};${s.config.distance};${s.config.targetType};${eIdx + 1};${aIdx + 1};${arr.scoreVal};${arr.valStr};${arr.x || ''};${arr.y || ''}\n`;
+                        });
+                    });
+                });
+
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `archery_export_${new Date().toISOString().slice(0,10)}.csv`;
+                a.click();
+            }
+        }
+
+        let app = null;
+        window.onload = function() {
+            app = new ArcheryApp();
+        };
+    </script>
+</body>
+</html>

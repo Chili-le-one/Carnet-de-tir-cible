@@ -1,0 +1,1982 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131d2f" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Carnet de saisie des scores de tir à l'arc sur cible : volées, cartographie des impacts, statistiques et historique.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tir Cible">
+<title>Carnet de Tir Cible</title>
+<style>
+/* ===== Thème : clair par défaut, sombre automatique selon l'appareil ===== */
+:root{
+  color-scheme:light dark;
+  --bg:#e9edf2; --card:#fff; --ink:#0e1a2b; --muted:#5b6a7e; --line:#d5dce6; --soft:#f1f4f8;
+  --primary:#0e1a2b; --primary-ink:#fff; --danger:#c62f3f; --chart:#0a6c99;
+  --gold:#FFD100; --red:#EE334E; --blue:#00A4E4; --black:#151515;
+  --nav-h:64px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0a111d; --card:#131d2f; --ink:#e9eff8; --muted:#92a1b6; --line:#243249; --soft:#0e1727;
+    --primary:#ffd100; --primary-ink:#161200; --danger:#ff7b89; --chart:#4cc3f5;
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:16px/1.4 "Avenir Next","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  touch-action:manipulation;
+  padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));
+}
+h1,h2,h3{margin:0;line-height:1.2}
+h2{font-size:17px}
+h3{font-size:15px}
+button{font:inherit;color:inherit;-webkit-user-select:none;user-select:none}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.muted{color:var(--muted)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.between{justify-content:space-between}
+.ic{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* ===== En-tête ===== */
+.top{
+  position:sticky; top:0; z-index:20; background:var(--card); border-bottom:1px solid var(--line);
+  padding:calc(10px + env(safe-area-inset-top)) 16px 12px;
+  display:flex; justify-content:space-between; align-items:center; gap:12px;
+}
+.top::after{
+  content:""; position:absolute; left:0; right:0; bottom:-1px; height:4px;
+  background:linear-gradient(90deg,var(--gold) 0 20%,var(--red) 20% 40%,var(--blue) 40% 60%,var(--black) 60% 80%,var(--line) 80%);
+}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand svg{width:34px;height:34px;flex:none}
+.brand h1{font-size:18px;font-weight:800;letter-spacing:-.01em}
+.brand p{margin:0;font-size:12px;color:var(--muted)}
+
+main{max-width:560px;margin:0 auto;padding:16px 12px 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+
+/* ===== Boutons ===== */
+.btn{
+  min-height:44px; padding:0 14px; border-radius:12px; border:1px solid var(--line); background:var(--card);
+  font-weight:650; font-size:15px; display:inline-flex; align-items:center; justify-content:center; gap:8px; cursor:pointer;
+  transition:transform .08s;
+}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--primary);color:var(--primary-ink);border-color:transparent}
+.btn.sm{min-height:38px;padding:0 12px;font-size:14px}
+.btn.big{min-height:52px;font-size:17px;width:100%}
+.btn.danger{color:var(--danger)}
+.btn:disabled{opacity:.4;pointer-events:none}
+.btn.icon-only{padding:0;width:38px}
+
+/* ===== Couleurs des zones (identiques à la cible officielle) ===== */
+.z-gold{background:var(--gold);color:#1a1500}
+.z-red{background:var(--red);color:#fff}
+.z-blue{background:var(--blue);color:#00141c}
+.z-black{background:var(--black);color:#fff}
+.z-white{background:#fff;color:#151515;box-shadow:inset 0 0 0 2px #9aa6b5}
+.z-miss{background:var(--soft);color:var(--danger);box-shadow:inset 0 0 0 2px var(--line)}
+
+/* ===== Carte de séance ===== */
+.chip{display:inline-block;padding:3px 10px;border-radius:999px;background:var(--soft);border:1px solid var(--line);font-size:13px;font-weight:650}
+.chip.gold{background:var(--gold);color:#1a1500;border-color:transparent}
+.total{display:flex;align-items:baseline;gap:8px;margin:10px 0 4px}
+.big{font-size:56px;font-weight:800;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.minis{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.mini{background:var(--soft);border-radius:10px;padding:8px 10px}
+.mini dt{font-size:12px;color:var(--muted)}
+.mini dd{margin:0;font-size:18px;font-weight:750;font-variant-numeric:tabular-nums}
+.progress{height:6px;border-radius:3px;background:var(--soft);overflow:hidden;margin-top:12px}
+.progress span{display:block;height:100%;background:var(--primary);transition:width .25s}
+
+
+/* ===== Commutateur de mode ===== */
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:var(--line);border-radius:14px;margin-bottom:12px}
+.seg button{min-height:44px;border:0;border-radius:11px;background:transparent;color:var(--muted);font-weight:700;display:flex;gap:8px;align-items:center;justify-content:center;cursor:pointer}
+.seg button[aria-pressed=true]{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.18)}
+
+/* ===== Clavier de saisie ===== */
+.keypad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.key{min-height:64px;border:0;border-radius:14px;font-weight:800;font-size:26px;font-variant-numeric:tabular-nums;cursor:pointer;transition:transform .06s}
+.key:active{transform:scale(.93)}
+.key small{display:block;font-size:11px;font-weight:700;opacity:.75;margin-top:-2px}
+.key:disabled{opacity:.22;pointer-events:none}
+
+/* ===== Cible tactile ===== */
+.target-wrap{max-width:380px;margin:0 auto}
+#svg-target,.map{display:block;width:100%;height:auto;background:var(--card)}
+#svg-target{touch-action:none;cursor:crosshair}
+.pendingbar{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px;min-height:48px}
+.zonebadge{display:inline-grid;place-items:center;min-width:34px;height:34px;padding:0 8px;border-radius:10px;font-weight:800;margin-left:6px}
+
+/* ===== Volée en cours ===== */
+.slots{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:10px;margin:10px 0;background:var(--soft);border-radius:12px;min-height:66px}
+.slot{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:18px}
+.slot.empty{background:transparent;border:2px dashed var(--line);color:var(--muted);font-weight:600}
+.slot.next{border-color:var(--ink);color:var(--ink)}
+
+/* ===== Tableaux ===== */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;text-align:center;font-size:14px;font-variant-numeric:tabular-nums}
+th{font-weight:650;color:var(--muted);padding:6px;border-bottom:1px solid var(--line)}
+td{padding:9px 6px;border-bottom:1px solid var(--line)}
+tr.cur td{background:var(--soft);font-weight:700}
+tr.cur td:first-child{box-shadow:inset 4px 0 0 var(--primary)}
+.sc{display:inline-block;min-width:24px;padding:2px 5px;margin:1px;border-radius:7px;font-weight:800;font-size:12px}
+
+/* ===== Statistiques ===== */
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
+.kpi b{display:block;font-size:28px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi span{font-size:13px;color:var(--muted)}
+.filters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chart{display:block;width:100%;height:auto}
+.gl{stroke:var(--line)}
+.axt{fill:var(--muted);font-size:10px}
+.ch-line{fill:none;stroke:var(--chart);stroke-width:2.5;stroke-linejoin:round}
+.ch-area{fill:var(--chart);opacity:.12}
+.ch-dot{fill:var(--card);stroke:var(--chart);stroke-width:2}
+.bar-row{display:grid;grid-template-columns:54px 1fr 74px;gap:8px;align-items:center;margin:7px 0;font-size:14px;font-variant-numeric:tabular-nums}
+.bar-track{height:14px;border-radius:7px;background:var(--soft);overflow:hidden}
+.bar-fill{height:100%;border-radius:7px;min-width:2px}
+.bar-lbl{font-weight:750}
+
+/* ===== Historique ===== */
+.hitem{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+.h-score{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+.h-score small{font-size:14px;font-weight:600;color:var(--muted)}
+
+/* ===== Formulaires / dialogues ===== */
+label,.lbl{display:grid;gap:6px;font-weight:650;font-size:14px}
+select,input{width:100%;min-height:46px;border:1px solid var(--line);border-radius:12px;padding:0 12px;background:var(--soft);color:var(--ink);font:inherit}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+.preset{min-height:40px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);font-weight:650;font-size:14px;cursor:pointer}
+.preset:active{background:var(--soft)}
+dialog{border:0;border-radius:20px;padding:0;width:min(440px,calc(100vw - 24px));max-height:calc(100dvh - 24px);background:var(--card);color:var(--ink)}
+dialog::backdrop{background:rgba(5,10,20,.62)}
+.dlg{padding:18px;display:grid;gap:14px;max-height:calc(100dvh - 24px);overflow:auto}
+.notice{background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:10px}
+.sum-score{display:flex;align-items:baseline;gap:8px}
+.empty{text-align:center;padding:28px 12px;color:var(--muted)}
+.empty h2{color:var(--ink);margin-bottom:6px}
+.empty .btn{margin-top:14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sr-only{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none}
+.btn:has(+ .sr-only:focus-visible){outline:3px solid var(--blue);outline-offset:2px}
+
+/* ===== Navigation basse ===== */
+nav.tabs{
+  position:fixed; left:0; right:0; bottom:0; z-index:20; background:var(--card); border-top:1px solid var(--line);
+  display:grid; grid-template-columns:repeat(4,1fr); padding-bottom:env(safe-area-inset-bottom);
+}
+nav.tabs button{
+  min-height:var(--nav-h); border:0; background:transparent; color:var(--muted);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-size:12px; font-weight:600; cursor:pointer;
+}
+nav.tabs button[aria-current=page]{color:var(--ink);font-weight:800;box-shadow:inset 0 3px 0 var(--primary)}
+
+/* ===== Notification ===== */
+#toast{
+  position:fixed; left:50%; bottom:calc(var(--nav-h) + 16px + env(safe-area-inset-bottom)); z-index:50;
+  transform:translate(-50%,16px); opacity:0; pointer-events:none; max-width:calc(100vw - 32px);
+  background:var(--ink); color:var(--bg); padding:12px 16px; border-radius:12px; font-weight:650; text-align:center;
+  transition:opacity .2s,transform .2s;
+}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#toast.error{background:var(--danger);color:#fff}
+.notice.win{background:var(--gold);color:#1a1500;border-color:transparent;font-weight:700}
+details.card>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:32px}
+details.card>summary::-webkit-details-marker{display:none}
+details.card[open]>summary{margin-bottom:12px}
+textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--soft);color:var(--ink);font:inherit;resize:vertical}
+.fields{display:grid;gap:10px}
+.feel{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.feel button{min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-weight:750;cursor:pointer}
+.feel button[aria-pressed=true]{background:var(--primary);color:var(--primary-ink);border-color:transparent}
+.vbar{fill:var(--chart);opacity:.5}.vbar.cur{opacity:1}
+.rec{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.rec:first-of-type{border-top:0}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.endchip{min-width:42px;min-height:42px;border-radius:10px;border:2px solid var(--c);background:var(--card);color:var(--ink);font-weight:800;cursor:pointer}
+.endchip[aria-pressed=true]{background:var(--c);color:#fff}
+.check{display:flex!important;align-items:center;gap:12px}
+.check input{width:24px;min-height:24px;flex:none}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:360px){.big{font-size:46px}.key{font-size:22px}.minis{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand">
+    <svg viewBox="-12 -12 24 24" aria-hidden="true">
+      <circle r="11" fill="#f6f6f6" stroke="#8b95a3" stroke-width=".6"/>
+      <circle r="8.8" fill="#1c1c1c"/>
+      <circle r="6.6" fill="#00A4E4"/>
+      <circle r="4.4" fill="#EE334E"/>
+      <circle r="2.2" fill="#FFD100"/>
+    </svg>
+    <div>
+      <h1>Carnet de Tir Cible</h1>
+      <p>Scores, volées et statistiques</p>
+    </div>
+  </div>
+  <button class="btn primary sm" data-action="new"><span data-i="plus"></span>Nouvelle</button>
+</header>
+
+<main>
+
+  <!-- ============ SAISIE ============ -->
+  <section id="tab-shoot">
+    <div id="backup-banner" class="notice" style="margin-bottom:12px" hidden>
+      <div><b>Pensez à sauvegarder vos séances</b><div id="backup-text" class="muted"></div></div>
+      <div class="row">
+        <button class="btn primary sm" data-action="share-backup"><span data-i="upload"></span>Sauvegarder</button>
+        <button class="btn sm" data-action="snooze-backup">Plus tard</button>
+      </div>
+    </div>
+    <div id="shoot-empty" class="card empty" hidden>
+      <h2>Aucune séance en cours</h2>
+      <p>Choisissez la distance et le blason pour commencer à noter vos volées.</p>
+      <button class="btn primary" data-action="new"><span data-i="plus"></span>Démarrer une séance</button>
+    </div>
+
+    <div id="shoot-main" hidden>
+      <div class="card">
+        <div class="row between">
+          <div class="row"><span class="chip" id="chip-dist"></span><span class="chip" id="chip-target"></span></div>
+          <button class="btn sm" id="btn-finish" data-action="finish-early"><span data-i="flag"></span>Terminer</button>
+        </div>
+        <div class="total"><span class="big" id="s-total">0</span><span class="muted" id="s-max"></span></div>
+        <div id="s-proj" class="muted" style="font-size:14px;font-weight:650" hidden></div>
+        <dl class="minis">
+          <div class="mini"><dt>Volée</dt><dd id="s-end">1/10</dd></div>
+          <div class="mini"><dt>Moy. / flèche</dt><dd id="s-avg">–</dd></div>
+          <div class="mini"><dt>10 et X</dt><dd id="s-tens">0</dd></div>
+          <div class="mini"><dt>X</dt><dd id="s-x">0</dd></div>
+        </dl>
+        <div class="progress" aria-hidden="true"><span id="s-bar" style="width:0"></span></div>
+      </div>
+
+      <div id="end-card" class="card">
+        <div class="row between">
+          <h2>Volée <span id="end-no">1</span></h2>
+          <span class="muted">Total <b id="end-sum" style="color:var(--ink)">0</b></span>
+        </div>
+        <div id="slots" class="slots"></div>
+        <div class="row">
+          <button class="btn" data-action="undo"><span data-i="undo"></span>Annuler la dernière</button>
+          <button class="btn danger" data-action="clear-end"><span data-i="trash"></span>Effacer la volée</button>
+        </div>
+      </div>
+
+      <div id="seg" class="seg" role="group" aria-label="Mode de saisie">
+        <button data-action="mode" data-mode="keys" aria-pressed="true"><span data-i="grid"></span>Clavier</button>
+        <button data-action="mode" data-mode="target" aria-pressed="false"><span data-i="target"></span>Cible</button>
+      </div>
+
+      <div id="panel-keys" class="keypad" role="group" aria-label="Valeur de la flèche">
+        <button class="key z-gold" data-action="score" data-v="X">X<small>10 int.</small></button>
+        <button class="key z-gold" data-action="score" data-v="10">10</button>
+        <button class="key z-gold" data-action="score" data-v="9">9</button>
+        <button class="key z-red" data-action="score" data-v="8">8</button>
+        <button class="key z-red" data-action="score" data-v="7">7</button>
+        <button class="key z-blue" data-action="score" data-v="6">6</button>
+        <button class="key z-blue" data-action="score" data-v="5">5</button>
+        <button class="key z-black" data-action="score" data-v="4">4</button>
+        <button class="key z-black" data-action="score" data-v="3">3</button>
+        <button class="key z-white" data-action="score" data-v="2">2</button>
+        <button class="key z-white" data-action="score" data-v="1">1</button>
+        <button class="key z-miss" data-action="score" data-v="M">M<small>manqué</small></button>
+      </div>
+
+      <div id="panel-target" class="card" hidden>
+        <div class="pendingbar">
+          <div id="pending-info" class="muted">Posez le doigt, glissez pour viser, relâchez pour valider.</div>
+          <button class="btn" id="btn-undo-target" data-action="undo" aria-label="Annuler la dernière flèche" disabled><span data-i="undo"></span>Annuler</button>
+        </div>
+        <div class="target-wrap"><svg id="svg-target" role="img" aria-label="Cible : touchez pour placer l'impact"></svg></div>
+        <div class="row" style="margin-top:10px;justify-content:center">
+          <button class="btn sm" data-action="score" data-v="M">Flèche manquée (hors cible)</button>
+        </div>
+      </div>
+
+      <div id="panel-done" class="card" hidden>
+        <h2>Séance terminée</h2>
+        <p id="done-text" class="muted"></p>
+        <div class="grid2">
+          <button class="btn" data-action="summary"><span data-i="target"></span>Voir le bilan</button>
+          <button class="btn" data-action="reopen"><span data-i="undo"></span>Corriger</button>
+        </div>
+        <button class="btn primary big" style="margin-top:10px" data-action="new"><span data-i="plus"></span>Nouvelle séance</button>
+      </div>
+
+      <details id="notes-card" class="card">
+        <summary><h3>Notes de la séance</h3><span id="notes-hint" class="muted" style="font-size:13px"></span></summary>
+        <div class="fields">
+          <div class="two">
+            <label>Conditions
+              <select id="n-weather">
+                <option value="">–</option><option>Salle</option><option>Soleil</option><option>Nuageux</option>
+                <option>Vent</option><option>Pluie</option><option>Froid</option><option>Chaud</option>
+              </select>
+            </label>
+            <label>Distance réelle<input id="n-real" placeholder="ex. 71 m" autocomplete="off"></label>
+          </div>
+          <div class="lbl">Sensations (1 = difficile, 5 = excellent)
+            <div class="feel" id="n-feel">
+              <button data-action="feel" data-v="1" aria-pressed="false">1</button><button data-action="feel" data-v="2" aria-pressed="false">2</button><button data-action="feel" data-v="3" aria-pressed="false">3</button><button data-action="feel" data-v="4" aria-pressed="false">4</button><button data-action="feel" data-v="5" aria-pressed="false">5</button>
+            </div>
+          </div>
+          <label>Réglages, remarques<textarea id="n-text" rows="3" placeholder="Fenêtre, viseur, repère, point faible…"></textarea></label>
+        </div>
+      </details>
+
+      <div class="card">
+        <h3 style="margin-bottom:8px">Feuille de marque</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Volée</th><th>Flèches</th><th>Total</th><th>Cumul</th></tr></thead>
+            <tbody id="scorecard"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STATISTIQUES ============ -->
+  <section id="tab-stats" hidden>
+    <div class="card">
+      <h3 style="margin-bottom:8px">Filtrer l'analyse</h3>
+      <div class="filters">
+        <label>Distance<select id="f-dist"></select></label>
+        <label>Blason<select id="f-target"></select></label>
+        <label id="f-bow-wrap" style="grid-column:1/-1" hidden>Arc<select id="f-bow"></select></label>
+      </div>
+    </div>
+    <div id="stats-empty" class="card empty" hidden>
+      <h2>Pas encore de statistiques</h2>
+      <p>Terminez une séance pour voir votre progression, la répartition de vos flèches et la carte de vos impacts.</p>
+    </div>
+    <div id="stats-body" hidden>
+      <div class="kpis" id="kpis"></div>
+      <div class="card" id="goal-card"></div>
+      <div class="card">
+        <h3 id="evo-title">Évolution</h3>
+        <p class="muted" id="evo-note" style="margin:2px 0 8px;font-size:13px"></p>
+        <div id="evo-chart"></div>
+      </div>
+      <div class="card">
+        <h3>Répartition des flèches</h3>
+        <div id="dist-bars"></div>
+      </div>
+      <div class="card">
+        <h3>Carte des impacts</h3>
+        <div id="map-box"></div>
+      </div>
+      <div class="card" id="ends-card" hidden></div>
+      <div class="card">
+        <h3 style="margin-bottom:4px">Records par format</h3>
+        <div id="records"></div>
+      </div>
+    </div>
+    <div id="volume-card" class="card" hidden></div>
+  </section>
+
+  <!-- ============ HISTORIQUE ============ -->
+  <section id="tab-history" hidden>
+    <div id="history-list"></div>
+  </section>
+
+  <!-- ============ RÉGLAGES ============ -->
+  <section id="tab-data" hidden>
+    <div class="card">
+      <h2 style="margin-bottom:10px">Profil de tir</h2>
+      <div class="fields">
+        <label>Archer<input id="pf-name" autocomplete="name" placeholder="Votre nom"></label>
+        <label>Arc<input id="pf-bow" autocomplete="off" placeholder="ex. Hoyt Formula, 38 lb"></label>
+        <label>Type d'arc<select id="pf-type"><option value="">Non précisé</option><option value="Arc classique">Arc classique</option><option value="Arc à poulies">Arc à poulies</option><option value="Arc nu (barebow)">Arc nu (barebow)</option><option value="Longbow">Longbow</option><option value="Arc droit / traditionnel">Arc droit / traditionnel</option><option value="Autre">Autre</option></select></label>
+      </div>
+      <p class="muted" style="margin:10px 0 0;font-size:13px">Ces informations sont enregistrées avec chaque nouvelle séance.</p>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom:10px">Préférences</h2>
+      <div class="fields">
+        <label class="check"><input type="checkbox" id="pref-wake">Garder l'écran allumé pendant une séance</label>
+        <label>Flèches de référence pour les objectifs<input id="pref-ref" type="number" inputmode="numeric" min="6" max="144" placeholder="60"></label>
+        <label>Rappel de sauvegarde
+          <select id="pref-backup">
+            <option value="5">Toutes les 5 séances</option>
+            <option value="10">Toutes les 10 séances</option>
+            <option value="20">Toutes les 20 séances</option>
+            <option value="0">Jamais</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom:6px">Sauvegarde</h2>
+      <p class="muted" style="margin-top:0">Vos séances sont enregistrées uniquement sur cet appareil. <span id="backup-status"></span></p>
+      <button class="btn primary big" data-action="share-backup"><span data-i="upload"></span>Partager la sauvegarde</button>
+      <div class="grid2" style="margin-top:10px">
+        <button class="btn" data-action="export-json"><span data-i="download"></span>Export JSON</button>
+        <button class="btn" data-action="export-csv"><span data-i="download"></span>Export CSV</button>
+      </div>
+      <button class="btn big" style="margin-top:10px" data-action="copy-json"><span data-i="list"></span>Copier mes séances (texte JSON)</button>
+      <label class="btn big" for="file-import" style="margin-top:10px;cursor:pointer"><span data-i="upload"></span>Importer un fichier de sauvegarde</label>
+      <input id="file-import" class="sr-only" type="file">
+      <label style="margin-top:12px">Ou collez ici le contenu d'une sauvegarde
+        <textarea id="paste-json" rows="3" placeholder="[ { &quot;id&quot;: &quot;session_…&quot; } ]" style="font:13px/1.3 ui-monospace,monospace"></textarea>
+      </label>
+      <button class="btn" style="margin-top:8px" data-action="import-text"><span data-i="upload"></span>Importer le texte collé</button>
+      <p id="import-status" role="status" style="margin:10px 0 0;font-weight:650" hidden></p>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom:6px">Application</h2>
+      <p id="pwa-status" class="muted" style="margin-top:0">Hors ligne : se prépare au premier chargement en ligne.</p>
+      <button class="btn primary big" id="btn-install" data-action="install"><span data-i="download"></span>Installer l'application</button>
+      <p id="install-help" class="muted" style="margin:10px 0 0;font-size:13px">Android (Chrome) : menu ⋮ puis « Installer l'application ». iPhone (Safari) : Partager puis « Sur l'écran d'accueil ».</p>
+      <button class="btn big" style="margin-top:12px" data-action="refresh-app"><span data-i="undo"></span>Mettre à jour l'application</button>
+      <p class="muted" style="margin:8px 0 0;font-size:13px">Version <b id="app-version"></b> · vos séances ne sont pas effacées par la mise à jour.</p>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom:6px">Zone sensible</h2>
+      <p class="muted" style="margin-top:0">Efface toutes les séances de cet appareil. Cette action est définitive.</p>
+      <button class="btn danger" data-action="reset"><span data-i="trash"></span>Tout supprimer</button>
+    </div>
+  </section>
+
+</main>
+
+<nav class="tabs" aria-label="Navigation principale">
+  <button data-action="tab" data-tab="shoot" aria-current="page"><span data-i="target"></span>Saisie</button>
+  <button data-action="tab" data-tab="stats"><span data-i="chart"></span>Stats</button>
+  <button data-action="tab" data-tab="history"><span data-i="list"></span>Historique</button>
+  <button data-action="tab" data-tab="data"><span data-i="gear"></span>Réglages</button>
+</nav>
+
+<!-- ============ NOUVELLE SÉANCE ============ -->
+<dialog id="dlg-setup" aria-labelledby="setup-title">
+  <div class="dlg">
+    <div class="row between">
+      <h2 id="setup-title">Nouvelle séance</h2>
+      <button class="btn sm icon-only" data-action="close" data-target="dlg-setup" aria-label="Fermer"><span data-i="x"></span></button>
+    </div>
+
+    <p id="setup-profile" class="muted" style="margin:-6px 0 0;font-size:13px" hidden></p>
+
+    <div id="resume-box" class="notice" hidden>
+      <div><b>Séance en cours</b><div id="resume-info" class="muted"></div></div>
+      <div class="row">
+        <button class="btn primary sm" data-action="resume">Reprendre</button>
+        <button class="btn sm danger" data-action="discard">Abandonner</button>
+      </div>
+    </div>
+
+    <div class="lbl">Formats rapides<div id="presets" class="presets"></div></div>
+
+    <label>Distance
+      <select id="cfg-distance">
+        <option value="18m">18 mètres (salle)</option>
+        <option value="25m">25 mètres</option>
+        <option value="30m">30 mètres</option>
+        <option value="50m">50 mètres</option>
+        <option value="70m">70 mètres</option>
+        <option value="Custom">Autre distance…</option>
+      </select>
+    </label>
+    <label id="cfg-custom-wrap" hidden>Distance personnalisée
+      <input id="cfg-custom" placeholder="ex. 40 m" autocomplete="off">
+    </label>
+    <label>Blason
+      <select id="cfg-target">
+        <option value="40">Blason 40 cm</option>
+        <option value="Trispot">Trispot 40 cm (zones 10 à 5)</option>
+        <option value="60">Blason 60 cm</option>
+        <option value="80">Blason 80 cm</option>
+        <option value="120">Blason 120 cm</option>
+      </select>
+    </label>
+    <div class="two">
+      <label>Flèches par volée
+        <select id="cfg-ape"><option value="1">1 flèche</option><option value="2">2 flèches</option><option value="3">3 flèches</option><option value="4">4 flèches</option><option value="5">5 flèches</option><option value="6">6 flèches</option><option value="7">7 flèches</option><option value="8">8 flèches</option><option value="9">9 flèches</option><option value="10">10 flèches</option><option value="11">11 flèches</option><option value="12">12 flèches</option></select>
+      </label>
+      <label>Nombre de volées
+        <input id="cfg-ends" type="number" inputmode="numeric" min="1" max="60" value="10">
+      </label>
+    </div>
+    <button class="btn primary big" data-action="start"><span data-i="check"></span>Démarrer la séance</button>
+  </div>
+</dialog>
+
+<!-- ============ BILAN ============ -->
+<dialog id="dlg-summary" aria-labelledby="sum-title">
+  <div class="dlg" id="summary-body"></div>
+</dialog>
+
+<dialog id="dlg-confirm" aria-labelledby="confirm-msg">
+  <div class="dlg">
+    <p id="confirm-msg" style="margin:0;font-weight:650"></p>
+    <div class="grid2">
+      <button class="btn" id="confirm-no">Annuler</button>
+      <button class="btn primary" id="confirm-yes">Confirmer</button>
+    </div>
+  </div>
+</dialog>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<noscript><p style="padding:16px">Cette application a besoin de JavaScript pour fonctionner.</p></noscript>
+
+<script>
+(() => {
+'use strict';
+
+/* =====================================================================
+   Carnet de Tir Cible — application autonome (aucune dépendance externe)
+   Les clés de stockage sont celles de l'ancienne version : vos séances
+   existantes restent disponibles.
+   ===================================================================== */
+
+const KEYS = {
+  sessions: 'archery_app_sessions_v3',
+  unfinished: 'archery_app_unfinished_v3',
+  cfg: 'carnet_tir_derniere_config',
+  mode: 'carnet_tir_mode',
+  profile: 'carnet_tir_profil',
+  prefs: 'carnet_tir_prefs',
+  goals: 'carnet_tir_objectifs',
+  backup: 'carnet_tir_sauvegarde'
+};
+
+const PRESETS = [
+  { label: 'Salle 2×30 flèches',   distance: '18m', target: '40',  ape: 3, ends: 20 },
+  { label: 'Entraînement 30 flèches', distance: '18m', target: '40', ape: 3, ends: 10 },
+  { label: 'Trispot 18 m',          distance: '18m', target: 'Trispot', ape: 3, ends: 20 },
+  { label: 'Extérieur 72 flèches',  distance: '70m', target: '120', ape: 6, ends: 12 }
+];
+
+/* ---------- Utilitaires ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+
+const store = {
+  get(k, fb) { try { const v = localStorage.getItem(k); return v === null ? fb : JSON.parse(v); } catch (e) { return fb; } },
+  set(k, v) {
+    try { localStorage.setItem(k, JSON.stringify(v)); return true; }
+    catch (e) { toast('Enregistrement impossible : le stockage du navigateur est plein ou bloqué.', 'error'); return false; }
+  },
+  del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+};
+
+/* Confirmation intégrée à la page : le confirm() natif est bloqué dans certaines
+   visionneuses et applications, ce qui rendait des boutons « muets ». */
+function askConfirm(msg, ok = 'Confirmer') {
+  return new Promise(resolve => {
+    const dlg = $('#dlg-confirm'), yes = $('#confirm-yes'), no = $('#confirm-no');
+    let answer = false;
+    $('#confirm-msg').textContent = msg;
+    yes.textContent = ok;
+    yes.onclick = () => { answer = true; dlg.close(); };
+    no.onclick = () => dlg.close();
+    dlg.onclose = () => { dlg.onclose = null; resolve(answer); };
+    dlg.showModal();
+  });
+}
+
+let toastTimer;
+function toast(msg, kind) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.className = 'show' + (kind === 'error' ? ' error' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ''; }, 2800);
+}
+
+/* ---------- Icônes (SVG intégrés, fonctionne hors ligne) ---------- */
+const ICONS = {
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+  trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',
+  check: '<path d="M20 6 9 17l-5-5"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+  grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+  chart: '<path d="M3 3v18h18"/><path d="m7 15 4-5 3 3 5-7"/>',
+  list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
+  database: '<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>',
+  download: '<path d="M12 3v12m0 0-4-4m4 4 4-4M4 20h16"/>',
+  upload: '<path d="M12 15V3m0 0L8 7m4-4 4 4M4 20h16"/>',
+  flag: '<path d="M5 21V4m0 0h12l-2 4 2 4H5"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'
+};
+const icon = n => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
+function hydrateIcons(root = document) {
+  $$('[data-i]', root).forEach(el => { el.innerHTML = icon(el.dataset.i); el.removeAttribute('data-i'); });
+}
+
+/* ---------- Règles de score & géométrie de la cible ---------- */
+const rank = v => v === 'X' ? 11 : v === 'M' ? 0 : parseInt(v, 10);
+const scoreOf = v => v === 'X' ? 10 : v === 'M' ? 0 : parseInt(v, 10);
+const sumScore = arrows => arrows.reduce((s, a) => s + a.scoreVal, 0);
+const targetLabel = t => t === 'Trispot' ? 'Trispot 40 cm' : `Blason ${t} cm`;
+
+function zoneClass(v) {
+  const n = scoreOf(v);
+  return n >= 9 ? 'z-gold' : n >= 7 ? 'z-red' : n >= 5 ? 'z-blue' : n >= 3 ? 'z-black' : n >= 1 ? 'z-white' : 'z-miss';
+}
+
+/* Un anneau = 10 unités SVG ; le 10 intérieur (X) = 5 unités.
+   Le trispot ne comporte que les zones 10 à 5. */
+function face(cfg) {
+  const tri = cfg.targetType === 'Trispot';
+  return { tri, minRing: tri ? 5 : 1, extent: tri ? 60 : 100, diam: tri ? 40 : (parseInt(cfg.targetType, 10) || 40) };
+}
+const cmPerUnit = cfg => face(cfg).diam / 200;
+
+function zoneAt(x, y, f) {
+  const r = Math.hypot(x, y);
+  if (r <= 5) return 'X';
+  if (r > f.extent) return 'M';
+  const ring = 11 - Math.ceil(r / 10);
+  return ring < f.minRing ? 'M' : String(ring);
+}
+
+const RING_FILL = { 1: '#f6f6f6', 2: '#f6f6f6', 3: '#1c1c1c', 4: '#1c1c1c', 5: '#00A4E4', 6: '#00A4E4', 7: '#EE334E', 8: '#EE334E', 9: '#FFD100', 10: '#FFD100' };
+const RING_LINE = { 1: '#8b95a3', 2: '#8b95a3', 3: '#8a8a8a', 4: '#8a8a8a', 5: '#0073a3', 6: '#0073a3', 7: '#a8203a', 8: '#a8203a', 9: '#a88a00', 10: '#a88a00' };
+
+function drawFace(svg, f) {
+  const pad = f.extent + 4;
+  svg.setAttribute('viewBox', `${-pad} ${-pad} ${pad * 2} ${pad * 2}`);
+  let h = '';
+  for (let k = f.minRing; k <= 10; k++) {
+    h += `<circle r="${(11 - k) * 10}" fill="${RING_FILL[k]}" stroke="${RING_LINE[k]}" stroke-width=".5"/>`;
+  }
+  h += `<circle r="5" fill="none" stroke="${RING_LINE[10]}" stroke-width=".4"/>`;
+  h += `<path d="M-3 0H3M0 -3V3" stroke="rgba(0,0,0,.45)" stroke-width=".5"/>`;
+  h += `<g data-layer="impacts"></g><g data-layer="extra"></g>`;
+  svg.innerHTML = h;
+  svg.dataset.face = f.tri ? 'tri' : 'std';
+}
+
+function dot(x, y, o = {}) {
+  const { r = 3.2, n = null, fill = '#fff', stroke = '#111', op = 1 } = o;
+  const txt = n !== null
+    ? `<text x="${x}" y="${(+y + 1.6).toFixed(1)}" text-anchor="middle" font-size="4.6" font-weight="700" fill="#111">${n}</text>` : '';
+  return `<g opacity="${op}"><circle cx="${x}" cy="${y}" r="${r}" fill="${fill}" stroke="${stroke}" stroke-width="1"/>${txt}</g>`;
+}
+
+/* ---------- Statistiques d'une séance ---------- */
+const endsOf = s => (s.ends || []).filter(Boolean);
+function sessionStats(s) {
+  const arrows = endsOf(s).flat();
+  const total = sumScore(arrows);
+  const tens = arrows.filter(a => a.valStr === '10' || a.valStr === 'X').length;
+  const xs = arrows.filter(a => a.valStr === 'X').length;
+  const planned = s.config.arrowsPerEnd * s.config.totalEnds;
+  return { arrows, count: arrows.length, total, tens, xs, planned, max: planned * 10,
+           avg: arrows.length ? total / arrows.length : 0, complete: arrows.length >= planned };
+}
+
+function isValidSession(s) {
+  return !!(s && s.config && Array.isArray(s.ends) && s.id
+    && Number.isFinite(+s.config.arrowsPerEnd) && +s.config.arrowsPerEnd > 0
+    && Number.isFinite(+s.config.totalEnds) && +s.config.totalEnds > 0
+    && s.config.distance !== undefined && s.config.targetType !== undefined
+    && s.ends.every(e => e === null || e === undefined || (Array.isArray(e) && e.every(a => a && typeof a.valStr === 'string' && Number.isFinite(+a.scoreVal)))));
+}
+function normalizeSession(s) {
+  const c = s.config;
+  c.arrowsPerEnd = parseInt(c.arrowsPerEnd, 10);
+  c.totalEnds = parseInt(c.totalEnds, 10);
+  c.distance = String(c.distance);
+  c.targetType = String(c.targetType);
+  s.currentEndIndex = Number.isFinite(+s.currentEndIndex) ? +s.currentEndIndex : 0;
+  s.ends = s.ends.map(e => e || []);
+  s.ends.forEach(e => e.forEach(a => {
+    a.scoreVal = +a.scoreVal;
+    a.x = Number.isFinite(+a.x) && a.x !== null && a.x !== '' ? +a.x : null;
+    a.y = Number.isFinite(+a.y) && a.y !== null && a.y !== '' ? +a.y : null;
+  }));
+  return s;
+}
+
+/* ---------- État ---------- */
+const app = {
+  sessions: [],
+  session: null,
+  mode: 'keys',
+  tab: 'shoot',
+  pending: null,
+  statsData: [],
+  mapView: 'density',
+  mapRange: 'all',
+  endsSession: '',
+  endsSel: new Set()
+};
+
+function loadSessions() {
+  const raw = store.get(KEYS.sessions, []);
+  return (Array.isArray(raw) ? raw : []).filter(isValidSession).map(normalizeSession);
+}
+const saveSessions = () => { const ok = store.set(KEYS.sessions, app.sessions); renderBackupBanner(); return ok; };
+const loadUnfinished = () => { const u = store.get(KEYS.unfinished, null); return isValidSession(u) ? normalizeSession(u) : null; };
+function persist() {
+  if (app.session && !app.session.finished) store.set(KEYS.unfinished, app.session);
+}
+function archive(s) {
+  const copy = JSON.parse(JSON.stringify(s));
+  const i = app.sessions.findIndex(x => x.id === copy.id);
+  if (i >= 0) app.sessions[i] = copy; else app.sessions.unshift(copy);
+  saveSessions();
+}
+
+function createSession(cfg) {
+  const pr = store.get(KEYS.profile, {});
+  return {
+    id: 'session_' + Date.now(),
+    date: new Date().toISOString(),
+    archer: pr.name || '', bow: pr.bow || '', bowType: pr.type || '',
+    config: { distance: cfg.distance, targetType: cfg.target, arrowsPerEnd: cfg.ape, totalEnds: cfg.ends },
+    currentEndIndex: 0,
+    ends: []
+  };
+}
+function setSession(s) {
+  app.session = s;
+  app.pending = null;
+  renderShoot();
+}
+
+/* ---------- Saisie des flèches ---------- */
+function addArrow(v, x = null, y = null) {
+  const s = app.session;
+  if (!s || s.finished) return;
+  const f = face(s.config);
+  if (f.tri && v !== 'M' && rank(v) < f.minRing) return;
+  const idx = s.currentEndIndex;
+  const end = s.ends[idx] || (s.ends[idx] = []);
+  const max = s.config.arrowsPerEnd;
+  if (end.length >= max) return;
+
+  end.push({ valStr: v, scoreVal: scoreOf(v), x, y });
+  app.pending = null;
+  buzz(12);
+
+  if (end.length >= max) {
+    if (idx >= s.config.totalEnds - 1) {
+      finishSession(false);
+      return;
+    }
+    s.currentEndIndex++;
+    buzz([20, 40, 20]);
+    toast(`Volée ${idx + 1} : ${sumScore(end)} points`);
+  }
+  persist();
+  renderShoot();
+}
+
+async function undo() {
+  const s = app.session;
+  if (!s) return;
+  if (s.finished && !(await reopen())) return;
+  let end = s.ends[s.currentEndIndex];
+  if (!end || !end.length) {
+    if (s.currentEndIndex === 0) { toast('Aucune flèche à annuler.'); return; }
+    s.currentEndIndex--;
+    end = s.ends[s.currentEndIndex];
+  }
+  end.pop();
+  app.pending = null;
+  persist();
+  renderShoot();
+}
+
+async function clearEnd() {
+  const s = app.session;
+  if (!s || s.finished) return;
+  const end = s.ends[s.currentEndIndex];
+  if (!end || !end.length) return;
+  if (end.length > 1 && !(await askConfirm('Effacer toutes les flèches de cette volée ?', 'Effacer'))) return;
+  s.ends[s.currentEndIndex] = [];
+  app.pending = null;
+  persist();
+  renderShoot();
+}
+
+function finishSession(early) {
+  const s = app.session;
+  s.finished = true;
+  if (early) s.endedEarly = true; else delete s.endedEarly;
+  archive(s);
+  store.del(KEYS.unfinished);
+  app.pending = null;
+  renderShoot();
+  buzz([30, 60, 30]);
+  openSummary(s, true);
+}
+
+async function finishEarly() {
+  const s = app.session;
+  if (!s || s.finished) return;
+  const st = sessionStats(s);
+  if (st.count === 0) {
+    if (await askConfirm('Aucune flèche saisie. Abandonner cette séance ?', 'Abandonner')) {
+      store.del(KEYS.unfinished);
+      setSession(null);
+      showSetup();
+    }
+    return;
+  }
+  if (!(await askConfirm(`Terminer la séance maintenant (${st.count}/${st.planned} flèches) et l'enregistrer dans l'historique ?`, 'Terminer'))) return;
+  finishSession(true);
+}
+
+async function reopen() {
+  const s = app.session;
+  if (!s || !s.finished) return false;
+  if (!(await askConfirm("Rouvrir cette séance pour corriger la saisie ? Elle sera retirée de l'historique jusqu'à ce que vous la terminiez à nouveau.", 'Rouvrir'))) return false;
+  const u = loadUnfinished();
+  if (u && u.id !== s.id && sessionStats(u).count > 0 && !(await askConfirm('Une autre séance est en cours : elle sera remplacée. Continuer ?', 'Remplacer'))) return false;
+  app.sessions = app.sessions.filter(x => x.id !== s.id);
+  saveSessions();
+  s.finished = false;
+  delete s.endedEarly;
+  let last = 0;
+  s.ends.forEach((e, i) => { if (e && e.length) last = i; });
+  s.currentEndIndex = last;
+  persist();
+  renderShoot();
+  return true;
+}
+
+/* ---------- Saisie sur cible (placer, ajuster, valider) ---------- */
+function setPending(x, y, finger = null) {
+  app.pending = { x, y, finger };
+  renderPending();
+}
+function confirmPending() {
+  const p = app.pending, s = app.session;
+  app.pending = null;
+  if (!p || !s || s.finished) { renderPending(); return; }
+  const f = face(s.config);
+  addArrow(zoneAt(p.x, p.y, f), Math.round(p.x * 10) / 10, Math.round(p.y * 10) / 10);
+  renderPending();
+}
+function lastArrowOf(s) {
+  for (let i = Math.min(s.currentEndIndex, s.ends.length - 1); i >= 0; i--) {
+    const e = s.ends[i];
+    if (e && e.length) return e[e.length - 1];
+  }
+  return null;
+}
+/* Au toucher, le viseur est placé ~60 px AU-DESSUS du doigt pour rester visible.
+   Il suffit de glisser : le viseur suit le doigt avec ce même décalage. */
+const FINGER_OFFSET_PX = 60;
+function pointerToSvg(e) {
+  const svg = $('#svg-target');
+  const ctm = svg.getScreenCTM();
+  const pt = svg.createSVGPoint();
+  pt.x = e.clientX; pt.y = e.clientY;
+  const finger = pt.matrixTransform(ctm.inverse());
+  const dy = e.pointerType === 'mouse' ? 0 : FINGER_OFFSET_PX / ctm.a;
+  const lim = face(app.session.config).extent * 1.1;
+  const clamp = v => Math.max(-lim, Math.min(lim, v));
+  return { x: clamp(finger.x), y: clamp(finger.y - dy), fx: finger.x, fy: finger.y, touch: dy > 0 };
+}
+
+/* ---------- Rendu : onglet Saisie ---------- */
+function renderShoot() {
+  const s = app.session;
+  $('#shoot-empty').hidden = !!s;
+  $('#shoot-main').hidden = !s;
+  if (!s) { updateWakeLock(); return; }
+
+  const c = s.config, st = sessionStats(s), f = face(c);
+  const idx = Math.min(s.currentEndIndex, c.totalEnds - 1);
+
+  $('#chip-dist').textContent = c.distance;
+  $('#chip-target').textContent = targetLabel(c.targetType);
+  $('#btn-finish').hidden = !!s.finished;
+  $('#s-total').textContent = st.total;
+  $('#s-max').textContent = `/ ${st.max} pts`;
+  const refN = refArrows(), pj = $('#s-proj');
+  pj.hidden = !(st.count && st.count !== refN);
+  if (!pj.hidden) pj.textContent = `Projection sur ${refN} flèches : ${projectedScore(s)} pts`;
+  $('#s-end').textContent = s.finished ? 'Fin' : `${idx + 1}/${c.totalEnds}`;
+  $('#s-avg').textContent = st.count ? st.avg.toFixed(1) : '–';
+  $('#s-tens').textContent = st.tens;
+  $('#s-x').textContent = st.xs;
+  $('#s-bar').style.width = Math.min(100, st.count / st.planned * 100) + '%';
+
+  // Volée en cours
+  const cur = s.ends[idx] || [];
+  $('#end-card').hidden = !!s.finished;
+  $('#end-no').textContent = idx + 1;
+  $('#end-sum').textContent = sumScore(cur);
+  let slots = '';
+  for (let i = 0; i < c.arrowsPerEnd; i++) {
+    const a = cur[i];
+    slots += a
+      ? `<span class="slot ${zoneClass(a.valStr)}">${a.valStr}</span>`
+      : `<span class="slot empty${i === cur.length ? ' next' : ''}">${i + 1}</span>`;
+  }
+  $('#slots').innerHTML = slots;
+
+  // Panneaux de saisie
+  const done = !!s.finished;
+  $('#seg').hidden = done;
+  $('#panel-keys').hidden = done || app.mode !== 'keys';
+  $('#panel-target').hidden = done || app.mode !== 'target';
+  $('#panel-done').hidden = !done;
+  $$('#seg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === app.mode)));
+  $$('#panel-keys .key').forEach(k => { k.disabled = f.tri && k.dataset.v !== 'M' && rank(k.dataset.v) < f.minRing; });
+
+  if (done) {
+    $('#done-text').textContent = s.endedEarly
+      ? `${st.total} points en ${st.count} flèches (terminée avant la fin : ${st.count}/${st.planned}).`
+      : `${st.total} points sur ${st.max} en ${st.count} flèches.`;
+  }
+
+  // Feuille de marque
+  let html = '', cumul = 0;
+  for (let e = 0; e < c.totalEnds; e++) {
+    const end = s.ends[e] || [];
+    const sum = sumScore(end);
+    cumul += sum;
+    const chips = [...end].sort((a, b) => rank(b.valStr) - rank(a.valStr))
+      .map(a => `<span class="sc ${zoneClass(a.valStr)}">${a.valStr}</span>`).join('');
+    const isCur = !s.finished && e === idx;
+    html += `<tr class="${isCur ? 'cur' : ''}"${isCur ? ' aria-current="true"' : ''}><td>${e + 1}</td><td>${chips || '<span class="muted">–</span>'}</td><td>${end.length ? sum : ''}</td><td>${end.length ? cumul : ''}</td></tr>`;
+  }
+  $('#scorecard').innerHTML = html;
+
+  // Cible
+  const svg = $('#svg-target');
+  if (svg.dataset.face !== (f.tri ? 'tri' : 'std')) drawFace(svg, f);
+  renderImpactLayer();
+  renderPending();
+  renderNotes();
+  updateWakeLock();
+}
+
+function renderImpactLayer() {
+  const s = app.session;
+  const layer = $('#svg-target [data-layer=impacts]');
+  if (!s || !layer) return;
+  let h = '';
+  s.ends.forEach((end, i) => (end || []).forEach((a, j) => {
+    if (a.x == null || a.y == null) return;
+    h += (i === s.currentEndIndex && !s.finished)
+      ? dot(a.x, a.y, { n: j + 1 })
+      : dot(a.x, a.y, { r: 2.2, fill: '#111', stroke: '#fff', op: .45 });
+  }));
+  layer.innerHTML = h;
+}
+
+function renderPending() {
+  const layer = $('#svg-target [data-layer=extra]');
+  const info = $('#pending-info'), btn = $('#btn-undo-target');
+  if (!layer || !app.session) return;
+  const sess = app.session, p = app.pending;
+  btn.disabled = !!sess.finished || sessionStats(sess).count === 0;
+  if (!p) {
+    layer.innerHTML = '';
+    const last = lastArrowOf(sess);
+    if (last) {
+      info.className = '';
+      info.innerHTML = `Dernière flèche <span class="zonebadge ${zoneClass(last.valStr)}">${last.valStr}</span>`;
+    } else {
+      info.className = 'muted';
+      info.textContent = 'Posez le doigt, glissez pour viser, relâchez pour valider.';
+    }
+    return;
+  }
+  const z = zoneAt(p.x, p.y, face(sess.config));
+  const x = p.x.toFixed(1), y = p.y.toFixed(1);
+  const guide = p.finger
+    ? `<line x1="${x}" y1="${y}" x2="${p.finger.x.toFixed(1)}" y2="${p.finger.y.toFixed(1)}" stroke="#111" stroke-width=".7" stroke-dasharray="1.5 1.5" opacity=".6"/>` +
+      `<circle cx="${p.finger.x.toFixed(1)}" cy="${p.finger.y.toFixed(1)}" r="2" fill="#111" opacity=".35"/>` : '';
+  layer.innerHTML = guide +
+    `<circle cx="${x}" cy="${y}" r="4.5" fill="none" stroke="#fff" stroke-width="2.4"/>` +
+    `<circle cx="${x}" cy="${y}" r="4.5" fill="none" stroke="#111" stroke-width="1" stroke-dasharray="2 1.5"/>` +
+    `<path d="M${x - 9} ${y}H${+x + 9}M${x} ${y - 9}V${+y + 9}" stroke="#fff" stroke-width="2.2"/>` +
+    `<path d="M${x - 9} ${y}H${+x + 9}M${x} ${y - 9}V${+y + 9}" stroke="#111" stroke-width=".8"/>`;
+  info.className = '';
+  info.innerHTML = `Zone <span class="zonebadge ${zoneClass(z)}">${z}</span> <span class="muted" style="font-size:13px">relâchez pour valider</span>`;
+}
+
+/* ---------- Notes de séance ---------- */
+let notesTimer;
+function renderNotes() {
+  const s = app.session;
+  if (!s) return;
+  const n = s.notes || {};
+  if (document.activeElement !== $('#n-text')) $('#n-text').value = n.text || '';
+  if (document.activeElement !== $('#n-real')) $('#n-real').value = n.real || '';
+  $('#n-weather').value = n.weather || '';
+  $$('#n-feel button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.v === n.feel)));
+  const bits = [n.weather, n.feel ? `${n.feel}/5` : '', n.text ? 'note' : ''].filter(Boolean);
+  $('#notes-hint').textContent = bits.join(' · ');
+}
+function saveNotes(immediate) {
+  clearTimeout(notesTimer);
+  const run = () => {
+    const s = app.session;
+    if (!s) return;
+    s.notes = { weather: $('#n-weather').value, real: $('#n-real').value.trim(), feel: (s.notes && s.notes.feel) || 0, text: $('#n-text').value };
+    if (s.finished) archive(s); else persist();
+    const n = s.notes;
+    $('#notes-hint').textContent = [n.weather, n.feel ? `${n.feel}/5` : '', n.text ? 'note' : ''].filter(Boolean).join(' · ');
+  };
+  if (immediate) run(); else notesTimer = setTimeout(run, 350);
+}
+function setFeel(v) {
+  const s = app.session;
+  if (!s) return;
+  s.notes = s.notes || {};
+  s.notes.feel = s.notes.feel === v ? 0 : v;
+  saveNotes(true);
+  renderNotes();
+}
+
+/* ---------- Records & objectifs ---------- */
+const formatKey = s => [s.config.distance, s.config.targetType, s.config.arrowsPerEnd * s.config.totalEnds].join('|');
+const goalKey = c => `${c.distance}|${c.targetType}`;
+const getGoals = () => store.get(KEYS.goals, {});
+function setGoal(key, v) {
+  const g = getGoals();
+  if (v > 0) g[key] = v; else delete g[key];
+  store.set(KEYS.goals, g);
+}
+function analyze(s) {
+  const st = sessionStats(s), key = formatKey(s);
+  const others = app.sessions.filter(x => x.id !== s.id && formatKey(x) === key && sessionStats(x).complete);
+  const prevBest = others.length ? Math.max(...others.map(x => sessionStats(x).total)) : null;
+  const goal = getGoals()[goalKey(s.config)] || 0;
+  const projected = projectedScore(s);
+  return { prevBest, record: st.complete && prevBest !== null && st.total > prevBest, goal, projected,
+           goalReached: goal > 0 && reliableProjection(s) && projected >= goal };
+}
+
+/* ---------- Écran toujours allumé ---------- */
+const getPrefs = () => Object.assign({ wake: true, backupEvery: 5, refArrows: 60 }, store.get(KEYS.prefs, {}));
+/* Projection : score ramené au nombre de flèches de référence (60 = 20 volées de 3).
+   Exemple : 270 points sur 30 flèches → 540 projetés sur 60. */
+const refArrows = () => Math.max(1, parseInt(getPrefs().refArrows, 10) || 60);
+const projectedScore = s => { const st = sessionStats(s); return st.count ? Math.round(st.total / st.count * refArrows()) : 0; };
+const reliableProjection = s => sessionStats(s).count >= Math.min(refArrows(), 12);
+let wakeLock = null;
+async function updateWakeLock() {
+  const want = getPrefs().wake && app.session && !app.session.finished && document.visibilityState === 'visible';
+  try {
+    if (want && !wakeLock && 'wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } else if (!want && wakeLock) {
+      await wakeLock.release();
+      wakeLock = null;
+    }
+  } catch (e) { wakeLock = null; }
+}
+
+/* ---------- Rappel de sauvegarde ---------- */
+const getBackup = () => Object.assign({ count: 0, snooze: 0, date: null }, store.get(KEYS.backup, {}));
+function markBackedUp() {
+  store.set(KEYS.backup, { count: app.sessions.length, snooze: 0, date: new Date().toISOString() });
+  renderBackupBanner();
+}
+function renderBackupBanner() {
+  const b = getBackup(), every = getPrefs().backupEvery;
+  const unsaved = Math.max(0, app.sessions.length - b.count);
+  const banner = $('#backup-banner');
+  if (!banner) return;
+  const show = every > 0 && unsaved >= every && app.sessions.length >= b.snooze;
+  banner.hidden = !show;
+  if (show) $('#backup-text').textContent = `${unsaved} séances ne sont pas encore sauvegardées.`;
+  const st = $('#backup-status');
+  if (st) st.textContent = b.date
+    ? `Dernière sauvegarde : ${fmtDate(b.date, true)}${unsaved ? ` (${unsaved} séance${unsaved > 1 ? 's' : ''} depuis)` : ''}.`
+    : 'Aucune sauvegarde effectuée pour l’instant.';
+}
+async function shareBackup() {
+  if (!app.sessions.length) { toast('Aucune séance à sauvegarder.'); return; }
+  const file = new File([JSON.stringify(app.sessions, null, 2)], `carnet_tir_cible_${today()}.json`, { type: 'application/json' });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({ files: [file], title: 'Sauvegarde Carnet de Tir Cible' });
+      markBackedUp();
+      toast('Sauvegarde partagée.');
+      return;
+    }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  exportJSON();
+}
+
+/* ---------- Réglages ---------- */
+function renderSettings() {
+  const pr = store.get(KEYS.profile, {}), pf = getPrefs();
+  $('#pf-name').value = pr.name || '';
+  $('#pf-bow').value = pr.bow || '';
+  $('#pf-type').value = pr.type || '';
+  $('#pref-wake').checked = !!pf.wake;
+  $('#pref-backup').value = String(pf.backupEvery);
+  $('#pref-ref').value = pf.refArrows;
+  renderBackupBanner();
+}
+function saveProfile() {
+  store.set(KEYS.profile, { name: $('#pf-name').value.trim(), bow: $('#pf-bow').value.trim(), type: $('#pf-type').value });
+}
+function savePrefs() {
+  store.set(KEYS.prefs, { wake: $('#pref-wake').checked, backupEvery: parseInt($('#pref-backup').value, 10), refArrows: Math.max(6, Math.min(144, parseInt($('#pref-ref').value, 10) || 60)) });
+  if (app.session) renderShoot();
+  renderBackupBanner();
+  updateWakeLock();
+}
+
+/* ---------- Bilan de séance ---------- */
+function biasOf(pts) {
+  const n = pts.length;
+  const mx = pts.reduce((s, p) => s + p.x, 0) / n;
+  const my = pts.reduce((s, p) => s + p.y, 0) / n;
+  const disp = pts.reduce((s, p) => s + Math.hypot(p.x - mx, p.y - my) * p.k, 0) / n;
+  const k = pts.reduce((s, p) => s + p.k, 0) / n;
+  const v = my < -5 ? 'Haut' : my > 5 ? 'Bas' : '';
+  const h = mx < -5 ? 'Gauche' : mx > 5 ? 'Droite' : '';
+  const text = [v, h].filter(Boolean).join('-') || 'Plein centre';
+  const dx = Math.abs(mx * k).toFixed(1), dy = Math.abs(my * k).toFixed(1);
+  const detail = `${dx} cm à ${mx < 0 ? 'gauche' : 'droite'} · ${dy} cm ${my < 0 ? 'trop haut' : 'trop bas'}`;
+  return { mx, my, disp, text, detail, k };
+}
+
+function drawMapPoints(svg, pts, bary, r) {
+  const layer = svg.querySelector('[data-layer=impacts]');
+  let h = pts.map(p => dot(p.x, p.y, { r, fill: '#0284c7', stroke: '#fff', op: .85 })).join('');
+  if (bary) h += `<circle cx="${bary.mx.toFixed(1)}" cy="${bary.my.toFixed(1)}" r="${r * 1.8}" fill="#dc2626" stroke="#fff" stroke-width="1.5"/>`;
+  layer.innerHTML = h;
+}
+
+function openSummary(s, fresh = false) {
+  const st = sessionStats(s), f = face(s.config), k = cmPerUnit(s.config);
+  const pts = st.arrows.filter(a => a.x != null && a.y != null).map(a => ({ x: a.x, y: a.y, k }));
+  const bias = pts.length ? biasOf(pts) : null;
+  const info = analyze(s);
+  let banner = '';
+  if (info.record) banner += `<div class="notice win">${fresh ? 'Nouveau record sur ce format' : 'Meilleure séance de ce format'} : ${st.total} pts (précédent : ${info.prevBest}).</div>`;
+  const ref = refArrows();
+  if (st.count && st.count !== ref) banner += `<div class="notice">Projection sur ${ref} flèches : <b>${info.projected} pts</b> (${st.count} flèches tirées).</div>`;
+  if (info.goalReached) banner += `<div class="notice win">Objectif de ${info.goal} points (sur ${ref} flèches) atteint !</div>`;
+  else if (info.goal) banner += `<div class="notice">Objectif : ${info.goal} pts sur ${ref} flèches${reliableProjection(s) ? `, il manque ${Math.max(0, info.goal - info.projected)} points` : ' (trop peu de flèches pour projeter)'}.</div>`;
+  const who = [s.archer, [s.bow, s.bowType].filter(Boolean).join(' · ')].filter(Boolean).join(' — ');
+
+  $('#summary-body').innerHTML = `
+    <div class="row between">
+      <h2 id="sum-title">Bilan de séance</h2>
+      <button class="btn sm icon-only" data-action="close" data-target="dlg-summary" aria-label="Fermer">${icon('x')}</button>
+    </div>
+    ${who ? `<div class="muted" style="font-size:13px;margin-top:-8px">${esc(who)}</div>` : ''}
+    <div class="sum-score"><span class="big">${st.total}</span><span class="muted">/ ${st.max} pts</span></div>
+    ${banner}
+    <div class="minis">
+      <div class="mini"><dt>Flèches</dt><dd>${st.count}</dd></div>
+      <div class="mini"><dt>Moy.</dt><dd>${st.count ? st.avg.toFixed(1) : '–'}</dd></div>
+      <div class="mini"><dt>10 et X</dt><dd>${st.tens}</dd></div>
+      <div class="mini"><dt>X</dt><dd>${st.xs}</dd></div>
+    </div>
+    ${pts.length ? `
+      <div class="target-wrap" style="width:100%"><svg id="svg-summary" class="map" role="img" aria-label="Carte des impacts de la séance"></svg></div>
+      <div class="grid2">
+        <div class="mini"><dt>Tendance</dt><dd>${bias.text}</dd><div class="muted" style="font-size:12px">${bias.detail}</div></div>
+        <div class="mini"><dt>Dispersion moyenne</dt><dd>${bias.disp.toFixed(1)} cm</dd></div>
+      </div>
+      <p class="muted" style="margin:0;font-size:13px">Point rouge : position moyenne de vos ${pts.length} impacts.</p>`
+    : `<p class="muted" style="margin:0">Aucun impact placé : utilisez le mode Cible pour obtenir la carte et la tendance de tir.</p>`}
+    <div class="grid2">
+      <button class="btn" data-action="close" data-target="dlg-summary">Fermer</button>
+      <button class="btn primary" data-action="summary-stats">${icon('chart')}Statistiques</button>
+    </div>`;
+
+  if (pts.length) {
+    const svg = $('#svg-summary');
+    drawFace(svg, f);
+    drawMapPoints(svg, pts, bias, 3);
+  }
+  const dlg = $('#dlg-summary');
+  if (!dlg.open) dlg.showModal();
+}
+
+/* ---------- Nouvelle séance ---------- */
+function renderPresets() {
+  $('#presets').innerHTML = PRESETS.map((p, i) => `<button class="preset" data-action="preset" data-i="${i}">${esc(p.label)}</button>`).join('');
+}
+function fillSetup(cfg) {
+  const sel = $('#cfg-distance');
+  const known = $$('option', sel).some(o => o.value === cfg.distance && o.value !== 'Custom');
+  sel.value = known ? cfg.distance : 'Custom';
+  $('#cfg-custom').value = known ? '' : (cfg.distance === 'Perso' ? '' : cfg.distance);
+  $('#cfg-custom-wrap').hidden = known;
+  $('#cfg-target').value = cfg.target;
+  $('#cfg-ape').value = String(cfg.ape);
+  $('#cfg-ends').value = cfg.ends;
+}
+function readSetup() {
+  let distance = $('#cfg-distance').value;
+  if (distance === 'Custom') {
+    distance = $('#cfg-custom').value.trim() || 'Perso';
+    if (/^\d+([.,]\d+)?$/.test(distance)) distance += 'm';
+    distance = distance.replace(/\s+/g, '').slice(0, 12);
+  }
+  const ends = Math.max(1, Math.min(60, parseInt($('#cfg-ends').value, 10) || 10));
+  return { distance, target: $('#cfg-target').value, ape: parseInt($('#cfg-ape').value, 10), ends };
+}
+function showSetup() {
+  fillSetup(store.get(KEYS.cfg, { distance: '18m', target: '40', ape: 3, ends: 10 }));
+  const pr = store.get(KEYS.profile, {});
+  const who = [pr.name, [pr.bow, pr.type].filter(Boolean).join(' · ')].filter(Boolean).join(' — ');
+  const pl = $('#setup-profile');
+  pl.hidden = !who;
+  pl.textContent = who ? `Archer : ${who} (modifiable dans Réglages)` : '';
+  const u = loadUnfinished();
+  const box = $('#resume-box');
+  if (u && sessionStats(u).count > 0) {
+    const st = sessionStats(u);
+    $('#resume-info').textContent = `${u.config.distance} · ${targetLabel(u.config.targetType)} · ${st.count}/${st.planned} flèches · ${st.total} pts`;
+    box.hidden = false;
+  } else {
+    box.hidden = true;
+  }
+  const dlg = $('#dlg-setup');
+  if (!dlg.open) dlg.showModal();
+}
+async function startSession() {
+  const cfg = readSetup();
+  const u = loadUnfinished();
+  if (u) {
+    const st = sessionStats(u);
+    if (st.count > 0 && !(await askConfirm(`Une séance est en cours (${st.count} flèches). Démarrer une nouvelle séance l'abandonnera. Continuer ?`, 'Abandonner et démarrer'))) return;
+  }
+  store.set(KEYS.cfg, cfg);
+  const s = createSession(cfg);
+  store.set(KEYS.unfinished, s);
+  setSession(s);
+  $('#dlg-setup').close();
+  switchTab('shoot');
+}
+function resumeSession() {
+  const u = loadUnfinished();
+  if (!u) return;
+  setSession(u);
+  $('#dlg-setup').close();
+  switchTab('shoot');
+}
+
+/* ---------- Navigation ---------- */
+function switchTab(tab) {
+  app.tab = tab;
+  ['shoot', 'stats', 'history', 'data'].forEach(t => { $('#tab-' + t).hidden = t !== tab; });
+  $$('nav.tabs button').forEach(b => {
+    if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  });
+  if (tab === 'stats') renderStats();
+  if (tab === 'history') renderHistory();
+  if (tab === 'data') renderSettings();
+  window.scrollTo({ top: 0 });
+}
+function setMode(m) {
+  app.mode = m;
+  app.pending = null;
+  store.set(KEYS.mode, m);
+  renderShoot();
+}
+
+/* ---------- Statistiques ---------- */
+const fmtDate = (iso, long) => new Date(iso).toLocaleDateString('fr-FR',
+  long ? { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' } : { day: '2-digit', month: 'short' });
+
+function fillFilters() {
+  const dists = [...new Set(app.sessions.map(s => s.config.distance))].sort((a, b) => parseFloat(a) - parseFloat(b));
+  const tgts = [...new Set(app.sessions.map(s => String(s.config.targetType)))];
+  const fd = $('#f-dist'), ft = $('#f-target');
+  const pd = fd.value || 'ALL', pt = ft.value || 'ALL';
+  fd.innerHTML = '<option value="ALL">Toutes</option>' + dists.map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('');
+  ft.innerHTML = '<option value="ALL">Tous</option>' + tgts.map(t => `<option value="${esc(t)}">${esc(targetLabel(t))}</option>`).join('');
+  fd.value = dists.includes(pd) ? pd : 'ALL';
+  ft.value = tgts.includes(pt) ? pt : 'ALL';
+  const bows = [...new Set(app.sessions.map(x => x.bow).filter(Boolean))];
+  const fb = $('#f-bow'), pb = fb.value || 'ALL';
+  fb.innerHTML = '<option value="ALL">Tous</option>' + bows.map(b => `<option value="${esc(b)}">${esc(b)}</option>`).join('');
+  fb.value = bows.includes(pb) ? pb : 'ALL';
+  $('#f-bow-wrap').hidden = bows.length < 2;
+}
+
+function lineChart(vals, labels, dec) {
+  const W = 320, H = 160, L = 34, R = 10, T = 12, B = 24;
+  let lo = Math.min(...vals), hi = Math.max(...vals);
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const pad = (hi - lo) * .15;
+  lo = Math.max(0, lo - pad); hi += pad;
+  const x = i => vals.length === 1 ? L + (W - L - R) / 2 : L + i * (W - L - R) / (vals.length - 1);
+  const y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
+  let g = '';
+  [lo, (lo + hi) / 2, hi].forEach(v => {
+    g += `<line class="gl" x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}"/><text class="axt" x="${L - 5}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end">${v.toFixed(dec)}</text>`;
+  });
+  const pts = vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`);
+  const line = vals.length > 1 ? `<polyline class="ch-line" points="${pts.join(' ')}"/>` : '';
+  const area = vals.length > 1 ? `<polygon class="ch-area" points="${x(0).toFixed(1)},${H - B} ${pts.join(' ')} ${x(vals.length - 1).toFixed(1)},${H - B}"/>` : '';
+  const dots = vals.map((v, i) => `<circle class="ch-dot" cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="4"><title>${esc(labels[i])} : ${v.toFixed(dec)}</title></circle>`).join('');
+  const first = `<text class="axt" x="${L}" y="${H - 6}" text-anchor="start">${esc(labels[0])}</text>`;
+  const last = vals.length > 1 ? `<text class="axt" x="${W - R}" y="${H - 6}" text-anchor="end">${esc(labels[labels.length - 1])}</text>` : '';
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Courbe d'évolution">${g}${area}${line}${dots}${first}${last}</svg>`;
+}
+
+/* Cartographie par volée : un seul point moyen par volée */
+function endStatsFor(list) {
+  const m = new Map();
+  list.forEach(sess => {
+    const k = cmPerUnit(sess.config);
+    (sess.ends || []).forEach((end, i) => {
+      if (!end || !end.length) return;
+      const g = m.get(i) || { pts: [], scores: [] };
+      end.forEach(a => {
+        g.scores.push(a.scoreVal);
+        if (a.x != null && a.y != null) g.pts.push({ x: a.x, y: a.y, k });
+      });
+      m.set(i, g);
+    });
+  });
+  return [...m.entries()].filter(([, g]) => g.pts.length).sort((a, b) => a[0] - b[0]).map(([i, g]) => ({
+    i, pts: g.pts, b: biasOf(g.pts), avg: g.scores.reduce((x, y) => x + y, 0) / g.scores.length
+  }));
+}
+
+function renderEndsCard() {
+  const card = $('#ends-card');
+  const data = app.statsData || [];
+  const withPts = data.filter(x => sessionStats(x).arrows.some(a => a.x != null && a.y != null));
+  card.hidden = false;
+  if (!withPts.length) {
+    card.innerHTML = `<h3 style="margin-bottom:6px">Cartographie par volée</h3>
+      <p class="muted" style="margin:0">Aucun impact enregistré pour ces filtres. Pour obtenir un point moyen par volée, placez vos flèches avec le mode « Cible » de l'onglet Saisie : le clavier n'enregistre pas la position des flèches.</p>`;
+    return;
+  }
+
+  if (app.endsSession !== 'ALL' && !withPts.some(x => x.id === app.endsSession)) {
+    app.endsSession = [...withPts].sort((a, b) => new Date(b.date) - new Date(a.date))[0].id;
+  }
+  const all = app.endsSession === 'ALL';
+  const list = all ? withPts : withPts.filter(x => x.id === app.endsSession);
+  const eps = endStatsFor(list);
+  const color = j => `hsl(${Math.round(210 - 210 * (eps.length > 1 ? j / (eps.length - 1) : 0))} 80% 42%)`;
+  const allTri = list.every(x => x.config.targetType === 'Trispot');
+
+  let spread = 0;
+  eps.forEach((a, i) => eps.slice(i + 1).forEach(b => {
+    const k = (a.b.k + b.b.k) / 2;
+    spread = Math.max(spread, Math.hypot(a.b.mx - b.b.mx, a.b.my - b.b.my) * k);
+  }));
+
+  const opts = `<option value="ALL"${all ? ' selected' : ''}>Toutes les séances (moyenne par n° de volée)</option>` +
+    [...withPts].sort((a, b) => new Date(b.date) - new Date(a.date)).map(x =>
+      `<option value="${esc(x.id)}"${x.id === app.endsSession ? ' selected' : ''}>${esc(fmtDate(x.date, true))} · ${esc(x.config.distance)} · ${sessionStats(x).total} pts</option>`).join('');
+
+  const chips = eps.map((e, j) =>
+    `<button class="endchip" style="--c:${color(j)}" data-action="end-toggle" data-e="${e.i}" aria-pressed="${app.endsSel.has(e.i)}" aria-label="Volée ${e.i + 1}">${e.i + 1}</button>`).join('');
+
+  const rows = eps.map((e, j) => {
+    const dx = e.b.mx * e.b.k, dy = e.b.my * e.b.k;
+    return `<tr><td><span class="sc" style="background:${color(j)};color:#fff">${e.i + 1}</span></td><td>${e.avg.toFixed(1)}</td>` +
+      `<td>${dx < 0 ? '←' : '→'} ${Math.abs(dx).toFixed(1)} · ${dy < 0 ? '↑' : '↓'} ${Math.abs(dy).toFixed(1)}</td><td>${e.b.disp.toFixed(1)}</td></tr>`;
+  }).join('');
+
+  card.innerHTML = `<h3 style="margin-bottom:4px">Cartographie par volée</h3>
+    <p class="muted" style="margin:0 0 10px;font-size:13px">Un point moyen par volée, de la première (bleu) à la dernière (rouge).</p>
+    <label>Séance<select id="e-session">${opts}</select></label>
+    <div class="target-wrap" style="margin-top:12px"><svg id="svg-ends" class="map" role="img" aria-label="Points moyens de chaque volée"></svg></div>
+    <div class="row between" style="margin-top:8px">
+      <span class="muted" style="font-size:13px">Touchez des volées pour voir leurs impacts.</span>
+      <span class="row"><button class="btn sm" data-action="ends-all">Tout</button><button class="btn sm" data-action="ends-none">Aucune</button></span>
+    </div>
+    <div class="chips">${chips}</div>
+    ${eps.length > 1 ? `<p style="margin:0 0 8px;font-weight:650">Écart maximal entre deux volées : ${spread.toFixed(1)} cm</p>` : ''}
+    <div class="table-wrap"><table>
+      <thead><tr><th>Volée</th><th>Moy.</th><th>Décalage (cm)</th><th>Dispers. (cm)</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    <p class="muted" style="margin:8px 0 0;font-size:13px">${all ? 'Moyenne de toutes les séances filtrées pour chaque numéro de volée. ' : ''}Décalage : position du point moyen par rapport au centre (← gauche, → droite, ↑ haut, ↓ bas).</p>`;
+
+  const svg = $('#svg-ends');
+  drawFace(svg, { tri: allTri, minRing: allTri ? 5 : 1, extent: allTri ? 60 : 100, diam: 40 });
+  let h = '';
+  if (eps.length > 1) {
+    h += `<polyline points="${eps.map(e => `${e.b.mx.toFixed(1)},${e.b.my.toFixed(1)}`).join(' ')}" fill="none" stroke="#111" stroke-width=".7" stroke-dasharray="1.5 1.5" opacity=".55"/>`;
+  }
+  eps.forEach((e, j) => {
+    if (app.endsSel.has(e.i)) e.pts.forEach(p => { h += `<circle cx="${p.x}" cy="${p.y}" r="1.9" fill="${color(j)}" stroke="#fff" stroke-width=".6"/>`; });
+  });
+  eps.forEach((e, j) => {
+    h += `<circle cx="${e.b.mx.toFixed(1)}" cy="${e.b.my.toFixed(1)}" r="3.6" fill="${color(j)}" stroke="#fff" stroke-width="1"/>` +
+      `<text x="${e.b.mx.toFixed(1)}" y="${(e.b.my + 1.5).toFixed(1)}" text-anchor="middle" font-size="4.2" font-weight="800" fill="#fff">${e.i + 1}</text>`;
+  });
+  svg.querySelector('[data-layer=impacts]').innerHTML = h;
+}
+
+/* Carte des impacts : densité (par défaut) ou points, sur une période au choix,
+   avec point moyen et ellipse de regroupement. */
+function ellipseOf(pts) {
+  const n = pts.length;
+  const mx = pts.reduce((t, p) => t + p.x, 0) / n, my = pts.reduce((t, p) => t + p.y, 0) / n;
+  let sxx = 0, syy = 0, sxy = 0;
+  pts.forEach(p => { const dx = p.x - mx, dy = p.y - my; sxx += dx * dx; syy += dy * dy; sxy += dx * dy; });
+  sxx /= n; syy /= n; sxy /= n;
+  const tr = (sxx + syy) / 2, df = Math.sqrt(((sxx - syy) / 2) ** 2 + sxy * sxy);
+  return { mx, my, rx: Math.max(1, 1.5 * Math.sqrt(tr + df)), ry: Math.max(1, 1.5 * Math.sqrt(Math.max(tr - df, 0))),
+           ang: 0.5 * Math.atan2(2 * sxy, sxx - syy) * 180 / Math.PI };
+}
+
+function renderImpactMap() {
+  const box = $('#map-box');
+  const sorted = [...(app.statsData || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const withPts = sorted.filter(x => sessionStats(x).arrows.some(a => a.x != null && a.y != null));
+  if (!withPts.length) {
+    box.innerHTML = '<p class="muted" style="margin:6px 0 0">Aucun impact enregistré : placez vos flèches en mode Cible pour obtenir la carte et la tendance de tir.</p>';
+    return;
+  }
+  const count = app.mapRange === 'all' ? withPts.length : Math.min(parseInt(app.mapRange, 10), withPts.length);
+  const list = withPts.slice(0, count);
+  const pts = [];
+  list.forEach(x => { const k = cmPerUnit(x.config); sessionStats(x).arrows.forEach(a => { if (a.x != null && a.y != null) pts.push({ x: a.x, y: a.y, k }); }); });
+  const allTri = list.every(x => x.config.targetType === 'Trispot');
+  const f = { tri: allTri, minRing: allTri ? 5 : 1, extent: allTri ? 60 : 100, diam: 40 };
+  const bias = biasOf(pts);
+  const view = app.mapView;
+  const ranges = [['all', `Toutes les séances (${withPts.length})`], ['10', '10 dernières séances'], ['5', '5 dernières séances'], ['1', 'Dernière séance']];
+
+  box.innerHTML = `
+    <div class="seg" role="group" aria-label="Type d'affichage">
+      <button data-action="map-view" data-view="density" aria-pressed="${view === 'density'}">Densité</button>
+      <button data-action="map-view" data-view="points" aria-pressed="${view === 'points'}">Points</button>
+    </div>
+    <label>Période<select id="m-range">${ranges.map(([v, l]) => `<option value="${v}"${v === app.mapRange ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+    <div class="target-wrap" style="margin-top:12px"><svg id="svg-stats-map" class="map" role="img" aria-label="Carte des impacts"></svg></div>
+    <div class="grid2" style="margin-top:10px">
+      <div class="mini"><dt>Tendance</dt><dd>${bias.text}</dd><div class="muted" style="font-size:12px">${bias.detail}</div></div>
+      <div class="mini"><dt>Dispersion moyenne</dt><dd>${bias.disp.toFixed(1)} cm</dd></div>
+      <div class="mini"><dt>Impacts</dt><dd>${pts.length}</dd><div class="muted" style="font-size:12px">${count} séance${count > 1 ? 's' : ''}</div></div>
+      <div class="mini" id="m-group"><dt>Regroupement</dt><dd>–</dd></div>
+    </div>
+    <p class="muted" style="margin:10px 0 0;font-size:13px">${view === 'density'
+      ? 'Plus une zone est foncée, plus vous y avez tiré.' : 'Chaque point est une flèche.'}
+      Point rouge : position moyenne. Ellipse : zone où tombent environ 2 flèches sur 3.</p>`;
+
+  const svg = $('#svg-stats-map');
+  drawFace(svg, f);
+  const pad = f.extent + 4;
+  // Léger voile clair : la cible garde ses couleurs, les impacts ressortent
+  let h = `<rect x="${-pad}" y="${-pad}" width="${pad * 2}" height="${pad * 2}" fill="#fff" opacity=".12"/>`;
+  if (view === 'density') {
+    const op = Math.max(.08, Math.min(.55, 8 / Math.pow(pts.length, .8)));
+    h += '<defs><filter id="blur-density" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.2"/></filter></defs>' +
+      '<g filter="url(#blur-density)">' +
+      pts.map(p => `<circle cx="${p.x}" cy="${p.y}" r="8" fill="#6d0fb8" opacity="${op.toFixed(3)}"/>`).join('') + '</g>';
+  } else {
+    h += pts.map(p => `<circle cx="${p.x}" cy="${p.y}" r="1.5" fill="#0b2f5e" stroke="#fff" stroke-width=".35" opacity=".8"/>`).join('');
+  }
+  if (pts.length >= 3) {
+    const e = ellipseOf(pts);
+    const tf = `rotate(${e.ang.toFixed(1)} ${e.mx.toFixed(1)} ${e.my.toFixed(1)})`;
+    h += `<ellipse cx="${e.mx.toFixed(1)}" cy="${e.my.toFixed(1)}" rx="${e.rx.toFixed(1)}" ry="${e.ry.toFixed(1)}" transform="${tf}" fill="none" stroke="#fff" stroke-width="2.4"/>` +
+      `<ellipse cx="${e.mx.toFixed(1)}" cy="${e.my.toFixed(1)}" rx="${e.rx.toFixed(1)}" ry="${e.ry.toFixed(1)}" transform="${tf}" fill="none" stroke="#111" stroke-width="1" stroke-dasharray="3 2"/>`;
+    const w = (2 * Math.max(e.rx, e.ry) * bias.k).toFixed(0), hh = (2 * Math.min(e.rx, e.ry) * bias.k).toFixed(0);
+    $('#m-group').innerHTML = `<dt>Regroupement</dt><dd>${w} × ${hh} cm</dd><div class="muted" style="font-size:12px">grand × petit axe</div>`;
+  }
+  h += `<circle cx="${bias.mx.toFixed(1)}" cy="${bias.my.toFixed(1)}" r="3.4" fill="#dc2626" stroke="#fff" stroke-width="1.5"/>`;
+  svg.querySelector('[data-layer=impacts]').innerHTML = h;
+}
+
+function renderGoal(data) {
+  const card = $('#goal-card');
+  const keys = [...new Set(data.map(x => goalKey(x.config)))];
+  if (keys.length !== 1) {
+    card.innerHTML = '<h3>Objectif</h3><p class="muted" style="margin:6px 0 0">Choisissez une distance et un blason pour fixer un objectif de score.</p>';
+    return;
+  }
+  const key = keys[0], goal = getGoals()[key] || 0, ref = refArrows();
+  const usable = data.filter(reliableProjection);
+  const best = usable.length ? Math.max(...usable.map(projectedScore)) : 0;
+  const last = [...data].sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+  const pct = goal ? Math.min(100, best / goal * 100) : 0;
+  const c = data[0].config;
+  card.innerHTML = `<h3 style="margin-bottom:10px">Objectif · ${esc(c.distance)} · ${esc(targetLabel(c.targetType))}</h3>
+    <label>Score visé sur ${ref} flèches<input id="g-input" data-key="${esc(key)}" type="number" inputmode="numeric" min="0" value="${goal || ''}" placeholder="ex. 540"></label>
+    ${goal ? `<div class="progress" aria-hidden="true"><span style="width:${pct.toFixed(0)}%"></span></div>
+      <p style="margin:8px 0 0;font-weight:650">${!usable.length ? 'Pas encore assez de flèches pour projeter.' : best >= goal ? 'Objectif atteint !' : `Meilleure projection : ${best} · il manque ${goal - best} points`}</p>`
+      : '<p class="muted" style="margin:8px 0 0;font-size:13px">Aucun objectif défini : saisissez un score pour suivre votre progression.</p>'}
+    <p class="muted" style="margin:8px 0 0;font-size:13px">Les séances plus courtes sont ramenées à ${ref} flèches (ex. 10 volées de 3 : score ×2). Dernière séance : ${projectedScore(last)} projetés${sessionStats(last).count === ref ? '' : ` (${sessionStats(last).total} réels)`}. Seules les séances d'au moins ${Math.min(ref, 12)} flèches comptent.</p>`;
+}
+
+function renderRecords(data) {
+  const groups = {};
+  data.forEach(x => {
+    const st = sessionStats(x);
+    if (!st.complete) return;
+    const k = formatKey(x);
+    const g = groups[k] || (groups[k] = { s: x, n: 0, best: -1, date: x.date, planned: st.planned });
+    g.n++;
+    if (st.total > g.best) { g.best = st.total; g.date = x.date; }
+  });
+  const rows = Object.values(groups).sort((a, b) => b.n - a.n).slice(0, 8);
+  $('#records').innerHTML = rows.length
+    ? rows.map(g => `<div class="rec"><div><b>${esc(g.s.config.distance)} · ${esc(targetLabel(g.s.config.targetType))}</b><div class="muted" style="font-size:13px">${g.planned} flèches · ${g.n} séance${g.n > 1 ? 's' : ''} · ${fmtDate(g.date)}</div></div><div class="h-score">${g.best}</div></div>`).join('')
+    : '<p class="muted" style="margin:6px 0 0">Terminez une séance complète pour voir vos records.</p>';
+}
+
+function renderVolume() {
+  const card = $('#volume-card');
+  const all = [...app.sessions];
+  const u = loadUnfinished();
+  if (u && !all.some(x => x.id === u.id)) all.push(u);
+  card.hidden = !all.length;
+  if (!all.length) return;
+  const monday = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x.getTime(); };
+  const thisWeek = monday(new Date());
+  const WEEK = 7 * 864e5;
+  const weeks = Array.from({ length: 8 }, (_, i) => ({ t: thisWeek - (7 - i) * WEEK, n: 0 }));
+  const now = new Date();
+  let month = 0, total = 0;
+  all.forEach(x => {
+    const n = sessionStats(x).count, d = new Date(x.date);
+    total += n;
+    if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) month += n;
+    const w = weeks.find(k => monday(d) === k.t);
+    if (w) w.n += n;
+  });
+  const max = Math.max(1, ...weeks.map(w => w.n));
+  const bw = 30, gap = 8, H = 90;
+  const bars = weeks.map((w, i) => {
+    const h = Math.round(w.n / max * H), x = 4 + i * (bw + gap);
+    return `<rect class="vbar${i === 7 ? ' cur' : ''}" x="${x}" y="${H - h + 14}" width="${bw}" height="${Math.max(h, w.n ? 2 : 0)}" rx="4"><title>${w.n} flèches</title></rect>` +
+      `<text class="axt" x="${x + bw / 2}" y="${H - h + 10}" text-anchor="middle">${w.n || ''}</text>` +
+      `<text class="axt" x="${x + bw / 2}" y="${H + 28}" text-anchor="middle">${i === 0 || i === 7 ? new Date(w.t).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) : ''}</text>`;
+  }).join('');
+  card.innerHTML = `<h3 style="margin-bottom:10px">Volume d'entraînement</h3>
+    <div class="minis" style="grid-template-columns:repeat(3,1fr);margin-top:0">
+      <div class="mini"><dt>Cette semaine</dt><dd>${weeks[7].n}</dd></div>
+      <div class="mini"><dt>Ce mois</dt><dd>${month}</dd></div>
+      <div class="mini"><dt>Au total</dt><dd>${total}</dd></div>
+    </div>
+    <p class="muted" style="margin:10px 0 4px;font-size:13px">Flèches tirées par semaine (8 dernières semaines)</p>
+    <svg class="chart" viewBox="0 0 ${8 * (bw + gap) + 4} ${H + 34}" role="img" aria-label="Flèches par semaine">${bars}</svg>`;
+}
+
+function renderStats() {
+  fillFilters();
+  renderVolume();
+  const d = $('#f-dist').value, t = $('#f-target').value, bw = $('#f-bow').value;
+  const data = app.sessions.filter(s => (d === 'ALL' || s.config.distance === d) && (t === 'ALL' || String(s.config.targetType) === t) && (bw === 'ALL' || s.bow === bw));
+  $('#stats-empty').hidden = data.length > 0;
+  $('#stats-body').hidden = data.length === 0;
+  if (!data.length) return;
+
+  let arrowsN = 0, scoreSum = 0, endsN = 0, tens = 0, best = 0;
+  const dist = { '10 et X': 0, '9': 0, '8': 0, '7': 0, '6': 0, '5 à 1': 0, 'M': 0 };
+  const maxes = new Set();
+  data.forEach(s => {
+    const st = sessionStats(s);
+    best = Math.max(best, st.total);
+    maxes.add(st.max);
+    endsN += endsOf(s).filter(e => e.length).length;
+    st.arrows.forEach(a => {
+      arrowsN++; scoreSum += a.scoreVal;
+      if (a.valStr === 'X' || a.valStr === '10') { tens++; dist['10 et X']++; }
+      else if (a.valStr === 'M') dist['M']++;
+      else if (a.scoreVal >= 6) dist[a.valStr]++;
+      else dist['5 à 1']++;
+    });
+  });
+
+  $('#kpis').innerHTML = `
+    <div class="kpi"><b>${best}</b><span>Meilleur score${maxes.size === 1 ? ` (sur ${[...maxes][0]})` : ''}</span></div>
+    <div class="kpi"><b>${endsN ? (scoreSum / endsN).toFixed(1) : '–'}</b><span>Moyenne par volée</span></div>
+    <div class="kpi"><b>${arrowsN ? Math.round(tens / arrowsN * 100) : 0}%</b><span>de 10 et X</span></div>
+    <div class="kpi"><b>${data.length}</b><span>séance${data.length > 1 ? 's' : ''} · ${arrowsN} flèches</span></div>`;
+
+  renderGoal(data);
+  renderRecords(data);
+  app.statsData = data;
+  renderEndsCard();
+
+  // Évolution : total si les séances ont le même format, sinon moyenne par flèche
+  const asc = [...data].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const useTotal = maxes.size === 1;
+  const vals = asc.map(s => { const st = sessionStats(s); return useTotal ? st.total : st.avg; });
+  $('#evo-title').textContent = useTotal ? 'Évolution du score' : 'Évolution de la moyenne par flèche';
+  $('#evo-note').textContent = useTotal ? 'Score total de chaque séance, de la plus ancienne à la plus récente.'
+    : 'Formats différents : la moyenne par flèche permet de les comparer.';
+  $('#evo-chart').innerHTML = lineChart(vals, asc.map(s => fmtDate(s.date)), useTotal ? 0 : 1);
+
+  // Répartition
+  const colors = { '10 et X': 'var(--gold)', '9': 'var(--gold)', '8': 'var(--red)', '7': 'var(--red)', '6': 'var(--blue)', '5 à 1': '#6b7686', 'M': 'var(--danger)' };
+  $('#dist-bars').innerHTML = Object.entries(dist).map(([k, n]) => {
+    const pct = arrowsN ? n / arrowsN * 100 : 0;
+    return `<div class="bar-row"><span class="bar-lbl">${k}</span><div class="bar-track"><div class="bar-fill" style="width:${pct.toFixed(1)}%;background:${colors[k]}"></div></div><span>${n} · ${Math.round(pct)}%</span></div>`;
+  }).join('');
+
+  app.statsData = data;
+  renderImpactMap();
+}
+
+/* ---------- Historique ---------- */
+function metaLine(s) {
+  const n = s.notes || {};
+  const bits = [[s.bow, s.bowType].filter(Boolean).join(' · '), n.weather, n.real ? `réel ${n.real}` : '', n.feel ? `forme ${n.feel}/5` : '']
+    .filter(Boolean).map(esc).join(' · ');
+  const text = n.text ? `<div style="font-size:13px;margin-top:4px;font-style:italic">${esc(n.text.length > 90 ? n.text.slice(0, 90) + '…' : n.text)}</div>` : '';
+  return (bits ? `<div class="muted" style="font-size:13px;margin-top:4px">${bits}</div>` : '') + text;
+}
+function renderHistory() {
+  const list = $('#history-list');
+  if (!app.sessions.length) {
+    list.innerHTML = `<div class="card empty"><h2>Historique vide</h2><p>Les séances terminées apparaissent ici.</p></div>`;
+    return;
+  }
+  const bestByFormat = {};
+  const fmtKey = s => [s.config.distance, s.config.targetType, s.config.arrowsPerEnd * s.config.totalEnds].join('|');
+  app.sessions.forEach(s => {
+    const k = fmtKey(s), st = sessionStats(s);
+    if (!(k in bestByFormat) || st.total > bestByFormat[k]) bestByFormat[k] = st.total;
+  });
+  const counts = {};
+  app.sessions.forEach(s => { const k = fmtKey(s); counts[k] = (counts[k] || 0) + 1; });
+
+  list.innerHTML = app.sessions.map(s => {
+    const st = sessionStats(s), k = fmtKey(s);
+    const isBest = counts[k] > 1 && st.total === bestByFormat[k] && st.complete;
+    return `<article class="card hitem">
+      <div>
+        <div class="h-score">${st.total} <small>${st.complete ? `/ ${st.max}` : `pts · ${st.count}/${st.planned} flèches`}</small></div>
+        <div class="muted" style="font-size:13px;margin:2px 0 6px">${fmtDate(s.date, true)}</div>
+        <div class="row"><span class="chip">${esc(s.config.distance)}</span><span class="chip">${esc(targetLabel(s.config.targetType))}</span>${isBest ? '<span class="chip gold">Meilleure</span>' : ''}</div>
+        <div class="muted" style="font-size:13px;margin-top:6px">Moy. ${st.count ? st.avg.toFixed(1) : '–'} · 10 et X : ${st.tens}</div>${metaLine(s)}
+      </div>
+      <div style="display:grid;gap:8px">
+        <button class="btn sm" data-action="open-session" data-id="${esc(s.id)}">Consulter</button>
+        <button class="btn sm danger" data-action="delete-session" data-id="${esc(s.id)}" aria-label="Supprimer la séance">${icon('trash')}</button>
+      </div>
+    </article>`;
+  }).join('');
+}
+function openSession(id) {
+  const found = app.sessions.find(s => s.id === id);
+  if (!found) return;
+  const copy = JSON.parse(JSON.stringify(found));
+  copy.finished = true;
+  setSession(copy);
+  switchTab('shoot');
+}
+async function deleteSession(id) {
+  const s = app.sessions.find(x => x.id === id);
+  if (!s) return;
+  if (!(await askConfirm(`Supprimer définitivement la séance du ${fmtDate(s.date, true)} ?`, 'Supprimer'))) return;
+  app.sessions = app.sessions.filter(x => x.id !== id);
+  saveSessions();
+  if (app.session && app.session.id === id && app.session.finished) setSession(null);
+  renderHistory();
+  toast('Séance supprimée.');
+}
+
+/* ---------- Export / import ---------- */
+function download(name, content, type) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+const today = () => new Date().toISOString().slice(0, 10);
+
+function exportJSON() {
+  if (!app.sessions.length) { toast('Aucune séance à exporter.'); return; }
+  download(`carnet_tir_cible_${today()}.json`, JSON.stringify(app.sessions, null, 2), 'application/json');
+  markBackedUp();
+}
+function exportCSV() {
+  if (!app.sessions.length) { toast('Aucune séance à exporter.'); return; }
+  const num = v => v == null ? '' : String(v).replace('.', ',');
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""').replace(/\s*\n\s*/g, ' ') + '"';
+  let csv = 'Séance;Date;Archer;Arc;Type d\'arc;Distance;Distance réelle;Blason;Conditions;Sensations;Notes;Volée;Flèche;Score;Zone;X (cm);Y (cm)\n';
+  app.sessions.forEach(s => {
+    const k = cmPerUnit(s.config);
+    s.ends.forEach((end, e) => (end || []).forEach((a, i) => {
+      const n = s.notes || {};
+      csv += [s.id, s.date, q(s.archer), q(s.bow), q(s.bowType), s.config.distance, q(n.real), s.config.targetType, q(n.weather), n.feel || '', q(n.text), e + 1, i + 1, a.scoreVal, a.valStr,
+        num(a.x == null ? null : +(a.x * k).toFixed(1)), num(a.y == null ? null : +(a.y * k).toFixed(1))].join(';') + '\n';
+    }));
+  });
+  download(`carnet_tir_cible_${today()}.csv`, '\uFEFF' + csv, 'text/csv;charset=utf-8');
+}
+function importFromText(text) {
+  const status = $('#import-status');
+  const say = (m, err) => {
+    status.textContent = m; status.hidden = false;
+    status.style.color = err ? 'var(--danger)' : 'var(--ink)';
+    toast(m, err ? 'error' : undefined);
+  };
+  let data;
+  try { data = JSON.parse(String(text).replace(/^\uFEFF/, '').trim()); }
+  catch (e) { say("Texte illisible : ce n'est pas une sauvegarde JSON valide.", true); return; }
+  if (data && !Array.isArray(data)) data = Array.isArray(data.sessions) ? data.sessions : [data];
+  if (!Array.isArray(data) || !data.length) { say('Aucune séance trouvée dans cette sauvegarde.', true); return; }
+
+  const known = new Set(app.sessions.map(x => x.id));
+  const fresh = []; let dup = 0, bad = 0;
+  data.forEach((raw, i) => {
+    if (!raw || typeof raw !== 'object') { bad++; return; }
+    if (!raw.id) raw.id = 'import_' + Date.now() + '_' + i;
+    if (!raw.date) raw.date = new Date().toISOString();
+    if (raw.currentEndIndex === undefined) raw.currentEndIndex = 0;
+    if (!isValidSession(raw)) { bad++; return; }
+    if (known.has(raw.id)) { dup++; return; }
+    known.add(raw.id);
+    const sess = normalizeSession(raw);
+    sess.finished = true;
+    fresh.push(sess);
+  });
+  if (fresh.length) {
+    app.sessions = [...app.sessions, ...fresh].sort((x, y) => new Date(y.date) - new Date(x.date));
+    saveSessions();
+  }
+  const parts = [`${fresh.length} séance${fresh.length > 1 ? 's' : ''} importée${fresh.length > 1 ? 's' : ''}`];
+  if (dup) parts.push(`${dup} déjà présente${dup > 1 ? 's' : ''}`);
+  if (bad) parts.push(`${bad} ignorée${bad > 1 ? 's' : ''} (format inconnu)`);
+  say(parts.join(', ') + '.', !fresh.length && bad > 0);
+  if (fresh.length) $('#paste-json').value = '';
+}
+function importJSON(file) {
+  const reader = new FileReader();
+  reader.onload = () => importFromText(reader.result);
+  reader.onerror = () => { const st = $('#import-status'); st.hidden = false; st.style.color = 'var(--danger)'; st.textContent = 'Impossible de lire ce fichier.'; };
+  reader.readAsText(file);
+}
+async function copyJSON() {
+  if (!app.sessions.length) { toast('Aucune séance à copier.'); return; }
+  const txt = JSON.stringify(app.sessions);
+  try { await navigator.clipboard.writeText(txt); markBackedUp(); toast('Séances copiées : collez-les où vous voulez les garder.'); }
+  catch (e) {
+    const ta = $('#paste-json'); ta.value = txt; ta.focus(); ta.select();
+    toast('Texte placé dans la zone ci-dessous : copiez-le manuellement.');
+  }
+}
+async function resetAll() {
+  if (!(await askConfirm('Supprimer définitivement TOUTES les séances de cet appareil ? Pensez à exporter une sauvegarde avant.', 'Tout supprimer'))) return;
+  [KEYS.sessions, KEYS.unfinished].forEach(store.del);
+  app.sessions = [];
+  setSession(null);
+  toast('Toutes les données ont été supprimées.');
+}
+
+/* ---------- Actions (délégation d'événements) ---------- */
+const APP_VERSION = 'v5 · 14 oct. 2026';
+let deferredInstall = null;
+const actions = {
+  'map-view': d => { app.mapView = d.view; renderImpactMap(); },
+  'refresh-app': async () => {
+    try {
+      const regs = navigator.serviceWorker ? await navigator.serviceWorker.getRegistrations() : [];
+      await Promise.all(regs.map(r => r.unregister()));
+      if (window.caches) { const keys = await caches.keys(); await Promise.all(keys.map(k => caches.delete(k))); }
+    } catch (e) {}
+    toast('Mise à jour en cours…');
+    setTimeout(() => location.reload(), 700);
+  },
+  tab: d => switchTab(d.tab),
+  new: () => showSetup(),
+  start: () => startSession(),
+  resume: () => resumeSession(),
+  discard: async () => {
+    if (!(await askConfirm('Abandonner la séance en cours ? Les flèches saisies seront perdues.', 'Abandonner'))) return;
+    store.del(KEYS.unfinished);
+    if (app.session && !app.session.finished) setSession(null);
+    $('#resume-box').hidden = true;
+  },
+  close: d => $('#' + d.target).close(),
+  preset: d => { const p = PRESETS[+d.i]; fillSetup({ distance: p.distance, target: p.target, ape: p.ape, ends: p.ends }); },
+  score: d => addArrow(d.v),
+  undo: () => undo(),
+  'clear-end': () => clearEnd(),
+  mode: d => setMode(d.mode),
+  'finish-early': () => finishEarly(),
+  summary: () => app.session && openSummary(app.session),
+  'summary-stats': () => { $('#dlg-summary').close(); switchTab('stats'); },
+  reopen: async () => { if (await reopen()) toast('Séance rouverte : annulez une flèche pour corriger.'); },
+  'open-session': d => openSession(d.id),
+  'delete-session': d => deleteSession(d.id),
+  'export-json': () => exportJSON(),
+  'export-csv': () => exportCSV(),
+  'copy-json': () => copyJSON(),
+  'share-backup': () => shareBackup(),
+  'snooze-backup': () => { const b = getBackup(); b.snooze = app.sessions.length + 3; store.set(KEYS.backup, b); renderBackupBanner(); },
+  feel: d => setFeel(+d.v),
+  'end-toggle': d => { const n = +d.e; if (app.endsSel.has(n)) app.endsSel.delete(n); else app.endsSel.add(n); renderEndsCard(); },
+  'ends-all': () => { endStatsFor(app.endsSession === 'ALL' ? app.statsData : app.statsData.filter(x => x.id === app.endsSession)).forEach(e => app.endsSel.add(e.i)); renderEndsCard(); },
+  'ends-none': () => { app.endsSel.clear(); renderEndsCard(); },
+  install: async () => {
+    if (!deferredInstall) {
+      // Le navigateur ne propose pas l'installation automatique : on guide l'utilisateur.
+      $('#install-help').style.cssText = 'margin:10px 0 0;font-size:15px;font-weight:650;color:var(--ink)';
+      $('#install-help').scrollIntoView({ block: 'center' });
+      toast("Installation automatique indisponible : suivez les étapes indiquées.");
+      return;
+    }
+    deferredInstall.prompt();
+    try { await deferredInstall.userChoice; } catch (e) {}
+    deferredInstall = null;
+  },
+  'import-text': () => importFromText($('#paste-json').value),
+  reset: () => resetAll()
+};
+
+function bindEvents() {
+  document.addEventListener('click', e => {
+    const b = e.target.closest('[data-action]');
+    if (!b || b.disabled) return;
+    const fn = actions[b.dataset.action];
+    if (fn) fn(b.dataset, b, e);
+  });
+
+  // Cible : toucher pour placer, glisser pour ajuster, relâcher pour valider
+  const svg = $('#svg-target');
+  let dragging = false;
+  const place = e => { const p = pointerToSvg(e); setPending(p.x, p.y, p.touch ? { x: p.fx, y: p.fy } : null); };
+  svg.addEventListener('pointerdown', e => {
+    if (app.mode !== 'target' || !app.session || app.session.finished) return;
+    e.preventDefault();
+    dragging = true;
+    try { svg.setPointerCapture(e.pointerId); } catch (err) {}
+    place(e);
+  });
+  svg.addEventListener('pointermove', e => { if (dragging) place(e); });
+  // Relâcher le doigt valide la flèche ; une interruption (appel, geste système) l'annule.
+  svg.addEventListener('pointerup', () => {
+    if (!dragging) return;
+    dragging = false;
+    confirmPending();
+  });
+  svg.addEventListener('pointercancel', () => {
+    dragging = false;
+    app.pending = null;
+    renderPending();
+  });
+
+  $('#cfg-distance').addEventListener('change', e => { $('#cfg-custom-wrap').hidden = e.target.value !== 'Custom'; });
+  $('#f-dist').addEventListener('change', renderStats);
+  $('#f-target').addEventListener('change', renderStats);
+  $('#f-bow').addEventListener('change', renderStats);
+  document.addEventListener('change', e => {
+    if (e.target.id === 'm-range') {
+      app.mapRange = e.target.value;
+      renderImpactMap();
+      return;
+    }
+    if (e.target.id === 'e-session') {
+      app.endsSession = e.target.value;
+      app.endsSel.clear();
+      renderEndsCard();
+      return;
+    }
+    if (e.target.id === 'g-input') {
+      setGoal(e.target.dataset.key, Math.max(0, parseInt(e.target.value, 10) || 0));
+      renderStats();
+    }
+  });
+  ['pf-name', 'pf-bow'].forEach(id => $('#' + id).addEventListener('input', saveProfile));
+  $('#pf-type').addEventListener('change', saveProfile);
+  $('#pref-wake').addEventListener('change', savePrefs);
+  $('#pref-backup').addEventListener('change', savePrefs);
+  $('#pref-ref').addEventListener('change', savePrefs);
+  ['n-weather', 'n-real', 'n-text'].forEach(id => $('#' + id).addEventListener('input', () => saveNotes(false)));
+  $('#n-weather').addEventListener('change', () => saveNotes(true));
+  document.addEventListener('visibilitychange', updateWakeLock);
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; });
+  window.addEventListener('appinstalled', () => { deferredInstall = null; $('#btn-install').hidden = true; toast('Application installée.'); });
+  $('#file-import').addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (f) importJSON(f);
+    e.target.value = '';
+  });
+
+  // Fermeture des dialogues en touchant l'arrière-plan
+  $$('dialog').forEach(dlg => dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); }));
+
+  // Raccourcis clavier (ordinateur) : 1-9, 0 = 10, X, M, Retour arrière = annuler
+  document.addEventListener('keydown', e => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (document.querySelector('dialog[open]')) return;
+    if (/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
+    if (app.tab !== 'shoot' || !app.session || app.session.finished || app.mode !== 'keys') return;
+    const k = e.key.toLowerCase();
+    if (k === 'backspace') { e.preventDefault(); undo(); return; }
+    const v = k === 'x' ? 'X' : k === 'm' ? 'M' : k === '0' ? '10' : /^[1-9]$/.test(k) ? k : null;
+    if (v) addArrow(v);
+  });
+}
+
+/* ---------- Démarrage ---------- */
+function init() {
+  app.sessions = loadSessions();
+  app.mode = store.get(KEYS.mode, 'keys') === 'target' ? 'target' : 'keys';
+  hydrateIcons();
+  renderPresets();
+  bindEvents();
+  renderBackupBanner();
+  $('#app-version').textContent = APP_VERSION;
+
+  if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    navigator.serviceWorker.register('sw.js')
+      .then(() => navigator.serviceWorker.ready)
+      .then(() => { $('#pwa-status').textContent = 'Fonctionne hors ligne : prête à être utilisée en salle sans réseau.'; })
+      .catch(() => {});
+  }
+  if (window.matchMedia && matchMedia('(display-mode: standalone)').matches) {
+    $('#pwa-status').textContent = 'Application installée.';
+    $('#btn-install').hidden = true;
+    $('#install-help').hidden = true;
+  } else {
+    const ua = navigator.userAgent;
+    const help = $('#install-help');
+    if (/iphone|ipad|ipod/i.test(ua)) help.textContent = 'iPhone / iPad : ouvrez cette page dans Safari, touchez Partager, puis « Sur l\'écran d\'accueil ».';
+    else if (/android/i.test(ua)) help.textContent = 'Android : dans Chrome, touchez le menu ⋮ puis « Installer l\'application » (ou « Ajouter à l\'écran d\'accueil »).';
+  }
+
+  const u = loadUnfinished();
+  if (u) {
+    setSession(u);
+    toast('Séance en cours reprise.');
+  } else {
+    renderShoot();
+    showSetup();
+  }
+}
+init();
+
+})();
+</script>
+</body>
+</html>
