@@ -221,6 +221,7 @@ function createSession(cfg) {
     date: new Date().toISOString(),
     archer: pr.name || '', bow: pr.bow || '', bowType: pr.type || '',
     config: { distance: cfg.distance, targetType: cfg.target, arrowsPerEnd: cfg.ape, totalEnds: cfg.ends },
+    ...(cfg.sight === 'no' ? { noSight: true } : {}),   // séance sans viseur : pas d'aide au réglage
     currentEndIndex: 0,
     ends: []
   };
@@ -954,7 +955,7 @@ function openSummary(s, fresh = false) {
       <div class="grid2">
         ${biasMinis(bias)}
       </div>
-      ${pts.length >= 6 ? sightHtml(s.config.distance, bias.mx * bias.k, bias.my * bias.k) : ''}
+      ${pts.length >= 6 && !s.noSight ? sightHtml(s.config.distance, bias.mx * bias.k, bias.my * bias.k) : ''}
       <p class="muted" style="margin:0;font-size:13px">Point rouge : position moyenne de vos ${pts.length} impacts.</p>`
     : `<p class="muted" style="margin:0">Aucun impact placé : utilisez le mode Cible pour obtenir la carte et la tendance de tir.</p>`}
     <div class="grid2">
@@ -990,6 +991,7 @@ function fillSetup(cfg) {
   $('#cfg-target').value = cfg.target;
   $('#cfg-ape').value = String(cfg.ape);
   $('#cfg-ends').value = cfg.ends;
+  if (cfg.sight) $('#cfg-sight').value = cfg.sight;   // les formats rapides gardent le choix du viseur
 }
 function readSetup() {
   let distance = $('#cfg-distance').value;
@@ -999,10 +1001,10 @@ function readSetup() {
     distance = distance.replace(/\s+/g, '').slice(0, 12);
   }
   const ends = Math.max(1, Math.min(60, parseInt($('#cfg-ends').value, 10) || 10));
-  return { distance, target: $('#cfg-target').value, ape: parseInt($('#cfg-ape').value, 10), ends };
+  return { distance, target: $('#cfg-target').value, ape: parseInt($('#cfg-ape').value, 10), ends, sight: $('#cfg-sight').value };
 }
 function showSetup() {
-  fillSetup(store.get(KEYS.cfg, { distance: '18m', target: '40', ape: 3, ends: 10 }));
+  fillSetup(store.get(KEYS.cfg, { distance: '18m', target: '40', ape: 3, ends: 10, sight: 'yes' }));
   const pr = store.get(KEYS.profile, {});
   const who = [pr.name, [pr.bow, pr.type].filter(Boolean).join(' · ')].filter(Boolean).join(' — ');
   const pl = $('#setup-profile');
@@ -1229,7 +1231,7 @@ function renderImpactMap() {
   const bias = biasOf(pts);
   const view = app.mapView;
   const dists = new Set(list.map(x => x.config.distance));
-  const sightBlock = (dists.size === 1 && pts.length >= 12) ? sightHtml([...dists][0], bias.mx * bias.k, bias.my * bias.k) : '';
+  const sightBlock = (dists.size === 1 && pts.length >= 12 && list.every(x => !x.noSight)) ? sightHtml([...dists][0], bias.mx * bias.k, bias.my * bias.k) : '';
   const ranges = [['all', `Toutes les séances (${withPts.length})`], ['10', '10 dernières séances'], ['5', '5 dernières séances'], ['1', 'Dernière séance']];
 
   box.innerHTML = `
@@ -1425,7 +1427,7 @@ function renderStats() {
 /* ---------- Historique ---------- */
 function metaLine(s) {
   const n = s.notes || {};
-  const bits = [[s.bow, s.bowType].filter(Boolean).join(' · '), n.weather, n.real ? `réel ${n.real}` : '', n.feel ? `forme ${n.feel}/5` : '']
+  const bits = [[s.bow, s.bowType].filter(Boolean).join(' · '), s.noSight ? 'sans viseur' : '', n.weather, n.real ? `réel ${n.real}` : '', n.feel ? `forme ${n.feel}/5` : '']
     .filter(Boolean).map(esc).join(' · ');
   const text = n.text ? `<div style="font-size:13px;margin-top:4px;font-style:italic">${esc(n.text.length > 90 ? n.text.slice(0, 90) + '…' : n.text)}</div>` : '';
   return (bits ? `<div class="muted" style="font-size:13px;margin-top:4px">${bits}</div>` : '') + text;
@@ -1573,7 +1575,7 @@ async function resetAll() {
 }
 
 /* ---------- Actions (délégation d'événements) ---------- */
-const APP_VERSION = 'v16 · 20 oct. 2026';
+const APP_VERSION = 'v17 · 20 oct. 2026';
 let deferredInstall = null;
 /* ---------- Ordre des fenêtres (pages Saisie et Stats) ---------- */
 const ORD_LABELS = {

@@ -26,6 +26,7 @@
     "Terminez une séance pour réorganiser la page Stats.": "Finish a session to reorder the Stats page.",
     "Distance réelle :": "Actual distance:", "relâchez pour valider": "release to confirm",
     "Sauvegarde Carnet de Tir Cible": "Target Archery Logbook backup",
+    "Viseur": "Sight", "Avec viseur": "With sight", "Sans viseur": "Without sight", "sans viseur": "no sight",
     "Abandonner": "Abandon", "Abandonner et démarrer": "Abandon and start", "Ajouter": "Add",
     "Android (Chrome) : menu ⋮ puis « Installer l'application ». iPhone (Safari) : Partager puis « Sur l'écran d'accueil ».": "Android (Chrome): ⋮ menu, then “Install app”. iPhone (Safari): Share, then “Add to Home Screen”.",
     "Android : dans Chrome, touchez le menu ⋮ puis « Installer l'application » (ou « Ajouter à l'écran d'accueil »).": "Android: in Chrome, tap the ⋮ menu then “Install app” (or “Add to Home screen”).",
