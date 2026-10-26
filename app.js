@@ -21,7 +21,8 @@ const KEYS = {
   backup: 'carnet_tir_sauvegarde',
   sight: 'carnet_tir_viseur',
   gear: 'carnet_tir_materiel',
-  order: 'carnet_tir_ordre'
+  order: 'carnet_tir_ordre',
+  contests: 'carnet_tir_concours'
 };
 
 const PRESETS = [
@@ -85,6 +86,8 @@ const ICONS = {
   download: '<path d="M12 3v12m0 0-4-4m4 4 4-4M4 20h16"/>',
   upload: '<path d="M12 15V3m0 0L8 7m4-4 4 4M4 20h16"/>',
   flag: '<path d="M5 21V4m0 0h12l-2 4 2 4H5"/>',
+  play: '<path d="M7 4v16l13-8z"/>',
+  pause: '<path d="M8 5v14M16 5v14"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'
 };
 const icon = n => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
@@ -253,6 +256,7 @@ function addArrow(v, x = null, y = null) {
       return;
     }
     s.currentEndIndex++;
+    timerReset();
     buzz([20, 40, 20]);
     toast(`Volée ${idx + 1} : ${sumScore(end)} points`);
   }
@@ -294,6 +298,8 @@ function finishSession(early) {
   if (early) s.endedEarly = true; else delete s.endedEarly;
   archive(s);
   store.del(KEYS.unfinished);
+  if (getPrefs().autoDl && !IS_IOS) autoDownload();
+  copySave('fin de séance');
   app.pending = null;
   renderShoot();
   buzz([30, 60, 30]);
@@ -373,7 +379,7 @@ function renderShoot() {
   const s = app.session;
   $('#shoot-empty').hidden = !!s;
   $('#shoot-main').hidden = !s;
-  if (!s) { updateWakeLock(); return; }
+  if (!s) { updateWakeLock(); timerRender(); return; }
 
   const c = s.config, st = sessionStats(s), f = face(c);
   const idx = Math.min(s.currentEndIndex, c.totalEnds - 1);
@@ -441,6 +447,7 @@ function renderShoot() {
   renderPending();
   renderNotes();
   updateWakeLock();
+  timerRender();
 }
 
 function renderImpactLayer() {
@@ -543,7 +550,7 @@ function analyze(s) {
 }
 
 /* ---------- Écran toujours allumé ---------- */
-const getPrefs = () => Object.assign({ wake: true, backupEvery: 5, refArrows: 60, weeklyGoal: 0, lang: 'auto', theme: 'carnet' }, store.get(KEYS.prefs, {}));
+const getPrefs = () => Object.assign({ wake: true, backupEvery: 5, refArrows: 60, weeklyGoal: 0, lang: 'auto', theme: 'carnet', timer: true, timerSec: 40, timerSound: true, autoDl: false }, store.get(KEYS.prefs, {}));
 const THEME_COLORS = { carnet: '#efe6cf', clair: '#ffffff', nuit: '#131d2f' };
 function applyTheme() {
   const th = getPrefs().theme;
@@ -612,6 +619,12 @@ function renderSettings() {
   $('#pf-bow').value = pr.bow || '';
   $('#pf-type').value = pr.type || '';
   $('#pref-wake').checked = !!pf.wake;
+  $('#pref-timer').checked = !!pf.timer;
+  $('#pref-timer-sec').value = pf.timerSec;
+  $('#pref-timer-sound').checked = !!pf.timerSound;
+  $('#pref-autodl').checked = !!pf.autoDl;
+  $('#autodl-wrap').hidden = IS_IOS;
+  renderCopies();
   $('#pref-backup').value = String(pf.backupEvery);
   $('#pref-ref').value = pf.refArrows;
   $('#pref-weekly').value = pf.weeklyGoal || '';
@@ -626,6 +639,10 @@ function saveProfile() {
 function savePrefs() {
   store.set(KEYS.prefs, Object.assign({}, getPrefs(), {
     wake: $('#pref-wake').checked,
+    timer: $('#pref-timer').checked,
+    timerSec: Math.max(10, Math.min(120, parseInt($('#pref-timer-sec').value, 10) || 40)),
+    timerSound: $('#pref-timer-sound').checked,
+    autoDl: $('#pref-autodl').checked,
     backupEvery: parseInt($('#pref-backup').value, 10),
     refArrows: Math.max(6, Math.min(144, parseInt($('#pref-ref').value, 10) || 60)),
     weeklyGoal: Math.max(0, Math.min(5000, parseInt($('#pref-weekly').value, 10) || 0)),
@@ -636,6 +653,7 @@ function savePrefs() {
   if (app.session) renderShoot();
   renderBackupBanner();
   updateWakeLock();
+  timerRender();
 }
 
 /* ---------- Modifier une flèche déjà saisie ---------- */
@@ -1433,6 +1451,8 @@ function metaLine(s) {
   return (bits ? `<div class="muted" style="font-size:13px;margin-top:4px">${bits}</div>` : '') + text;
 }
 function renderHistory() {
+  renderCalendar();
+  const contestDays = new Set(store.get(KEYS.contests, []).map(c => c.date));
   const list = $('#history-list');
   if (!app.sessions.length) {
     list.innerHTML = `<div class="card empty"><h2>Historique vide</h2><p>Les séances terminées apparaissent ici.</p></div>`;
@@ -1454,7 +1474,7 @@ function renderHistory() {
       <div>
         <div class="h-score">${st.total} <small>${st.complete ? `/ ${st.max}` : `pts · ${st.count}/${st.planned} flèches`}</small></div>
         <div class="muted" style="font-size:13px;margin:2px 0 6px">${fmtDate(s.date, true)}</div>
-        <div class="row"><span class="chip">${esc(s.config.distance)}</span><span class="chip">${esc(targetLabel(s.config.targetType))}</span>${isBest ? '<span class="chip gold">Meilleure</span>' : ''}</div>
+        <div class="row"><span class="chip">${esc(s.config.distance)}</span><span class="chip">${esc(targetLabel(s.config.targetType))}</span>${isBest ? '<span class="chip gold">Meilleure</span>' : ''}${contestDays.has(dayKey(new Date(s.date))) ? '<span class="chip gold">★ Concours</span>' : ''}</div>
         <div class="muted" style="font-size:13px;margin-top:6px">Moy. ${st.count ? st.avg.toFixed(1) : '–'} · 10 et X : ${st.tens}</div>${metaLine(s)}
       </div>
       <div style="display:grid;gap:8px">
@@ -1476,6 +1496,7 @@ async function deleteSession(id) {
   const s = app.sessions.find(x => x.id === id);
   if (!s) return;
   if (!(await askConfirm(`Supprimer définitivement la séance du ${fmtDate(s.date, true)} ?`, 'Supprimer'))) return;
+  copySave('avant suppression');
   app.sessions = app.sessions.filter(x => x.id !== id);
   saveSessions();
   if (app.session && app.session.id === id && app.session.finished) setSession(null);
@@ -1542,6 +1563,7 @@ function importFromText(text) {
     fresh.push(sess);
   });
   if (fresh.length) {
+    copySave('avant import');
     app.sessions = [...app.sessions, ...fresh].sort((x, y) => new Date(y.date) - new Date(x.date));
     saveSessions();
   }
@@ -1568,14 +1590,222 @@ async function copyJSON() {
 }
 async function resetAll() {
   if (!(await askConfirm('Supprimer définitivement TOUTES les séances de cet appareil ? Pensez à exporter une sauvegarde avant.', 'Tout supprimer'))) return;
+  copySave('avant effacement total');
   [KEYS.sessions, KEYS.unfinished].forEach(store.del);
   app.sessions = [];
   setSession(null);
   toast('Toutes les données ont été supprimées.');
 }
 
+/* ---------- Minuteur de volée ---------- */
+const timer = { sid: null, total: 0, left: 0, endAt: 0, running: false, iv: null, warned: false };
+let audioCtx = null;
+function audioUnlock() {
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!audioCtx && AC) audioCtx = new AC();
+    if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+  } catch (e) {}
+}
+function timerAlert(freq, ms, vib) {
+  if (!getPrefs().timerSound) return;
+  buzz(vib);
+  if (!audioCtx) return;
+  try {
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.frequency.value = freq; g.gain.value = .25;
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + ms / 1000);
+  } catch (e) {}
+}
+const timerTotal = () => app.session ? getPrefs().timerSec * app.session.config.arrowsPerEnd : 0;
+function timerStop() { clearInterval(timer.iv); timer.iv = null; timer.running = false; }
+function timerReset() { timerStop(); timer.total = timer.left = timerTotal(); timer.warned = false; timerRender(); }
+function timerToggle() {
+  if (timer.running) {
+    timer.left = Math.max(0, (timer.endAt - Date.now()) / 1000);
+    timerStop();
+  } else {
+    if (timer.left <= 0) timer.left = timer.total;
+    audioUnlock();
+    timer.endAt = Date.now() + timer.left * 1000;
+    timer.running = true;
+    timer.iv = setInterval(timerTick, 250);
+  }
+  timerRender();
+}
+function timerTick() {
+  timer.left = Math.max(0, (timer.endAt - Date.now()) / 1000);
+  if (!timer.warned && timer.total > 45 && timer.left <= 30) { timer.warned = true; timerAlert(880, 150, 150); }
+  if (timer.left <= 0) { timerStop(); timerAlert(440, 800, [300, 100, 300]); toast('Temps écoulé !'); }
+  timerRender();
+}
+function timerRender() {
+  const s = app.session, box = $('#timer-box');
+  const on = !!(getPrefs().timer && s && !s.finished);
+  box.hidden = !on;
+  if (!on) { timerStop(); timer.sid = null; return; }
+  if (timer.sid !== s.id || (!timer.running && timer.total !== timerTotal())) {
+    timerStop(); timer.sid = s.id; timer.total = timer.left = timerTotal(); timer.warned = false;
+  }
+  const sec = Math.ceil(timer.left), el = $('#timer-time');
+  el.textContent = Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+  el.className = 'timer-time' + (timer.running && sec <= 10 ? ' bad' : timer.running && sec <= 30 ? ' warn' : '');
+  $('#timer-go-label').textContent = timer.running ? 'Pause' : (timer.left >= timer.total ? 'Démarrer' : (timer.left > 0 ? 'Reprendre' : 'Redémarrer'));
+  $('#timer-go-ic').innerHTML = icon(timer.running ? 'pause' : 'play');
+}
+
+/* ---------- Copies de sécurité automatiques (IndexedDB) ---------- */
+const IS_IOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+function idbOpen() {
+  return new Promise((res, rej) => {
+    if (!window.indexedDB) { rej(new Error('IndexedDB indisponible')); return; }
+    const r = indexedDB.open('carnet_tir', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('copies', { keyPath: 'ts' });
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function copiesAll() {
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const q = db.transaction('copies').objectStore('copies').getAll();
+    q.onsuccess = () => res(q.result.sort((a, b) => b.ts - a.ts));
+    q.onerror = () => rej(q.error);
+  });
+}
+/* À appeler AVANT le changement : l'état est figé tout de suite, l'écriture se fait ensuite. */
+async function copySave(reason) {
+  if (!app.sessions.length) return;
+  const data = JSON.stringify(app.sessions), count = app.sessions.length;
+  try {
+    const old = await copiesAll();
+    const db = await idbOpen();
+    const os = db.transaction('copies', 'readwrite').objectStore('copies');
+    os.put({ ts: Math.max(Date.now(), old.length ? old[0].ts + 1 : 0), reason, count, data });
+    old.slice(7).forEach(c => os.delete(c.ts));
+  } catch (e) {}
+}
+async function renderCopies() {
+  const box = $('#copies-list');
+  let all = [];
+  try { all = await copiesAll(); } catch (e) {}
+  box.innerHTML = all.length
+    ? all.map(c => `<div class="rec"><div><b>${fmtDate(new Date(c.ts).toISOString(), true)}</b><div class="muted" style="font-size:13px">${c.count} séances · ${esc(c.reason)}</div></div><button class="btn sm" data-action="copy-restore" data-ts="${c.ts}">Restaurer</button></div>`).join('') +
+      '<button class="btn sm danger" style="margin-top:8px" data-action="copies-clear">Supprimer les copies</button>'
+    : '<p class="muted" style="margin:6px 0 0">Aucune copie pour l\'instant : la première est faite à la fin de votre prochaine séance.</p>';
+}
+async function restoreCopy(ts) {
+  let c;
+  try { c = (await copiesAll()).find(x => String(x.ts) === String(ts)); } catch (e) {}
+  if (!c) return;
+  let data;
+  try { data = JSON.parse(c.data).filter(isValidSession).map(normalizeSession); } catch (e) { toast('Copie illisible.', 'error'); return; }
+  const when = fmtDate(new Date(c.ts).toISOString(), true);
+  if (!(await askConfirm(`Remplacer vos ${app.sessions.length} séances actuelles par les ${data.length} séances de la copie du ${when} ?`, 'Restaurer'))) return;
+  await copySave('avant restauration');
+  app.sessions = data.map(x => Object.assign(x, { finished: true }));
+  saveSessions();
+  if (app.session && app.session.finished) setSession(null);
+  renderCopies();
+  renderHistory();
+  toast('Copie restaurée.');
+}
+async function clearCopies() {
+  if (!(await askConfirm('Supprimer toutes les copies automatiques de cet appareil ?', 'Supprimer'))) return;
+  try { (await idbOpen()).transaction('copies', 'readwrite').objectStore('copies').clear(); } catch (e) {}
+  setTimeout(renderCopies, 150);
+}
+function autoDownload() {
+  const d = new Date(), hm = String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
+  download(`carnet_tir_cible_${today()}_${hm}.json`, JSON.stringify(app.sessions, null, 2), 'application/json');
+  markBackedUp();
+}
+
+/* ---------- Calendrier d'assiduité et jours de concours ---------- */
+const dayKey = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+function calMove(delta) {
+  const d = new Date(app.cal.y, app.cal.m + delta, 1);
+  app.cal.y = d.getFullYear(); app.cal.m = d.getMonth();
+  renderCalendar();
+}
+function contestAdd(day) {
+  const list = store.get(KEYS.contests, []);
+  const input = $('#cal-name');
+  if (!list.some(c => c.date === day)) list.push({ id: 'c' + Date.now(), date: day, name: input ? input.value.trim().slice(0, 60) : '' });
+  store.set(KEYS.contests, list);
+  toast('Concours ajouté.');
+  renderHistory();
+}
+function contestDel(day) {
+  store.set(KEYS.contests, store.get(KEYS.contests, []).filter(c => c.date !== day));
+  toast('Concours retiré.');
+  renderHistory();
+}
+function renderCalendar() {
+  const card = $('#cal-card'), now = new Date(), todayKey = dayKey(now), loc = window.__LOCALE || 'fr-FR';
+  if (!app.cal) app.cal = { y: now.getFullYear(), m: now.getMonth(), sel: todayKey };
+  const { y, m } = app.cal;
+  const arrows = {}, byDay = {};
+  app.sessions.forEach(s => {
+    const k = dayKey(new Date(s.date));
+    arrows[k] = (arrows[k] || 0) + sessionStats(s).count;
+    (byDay[k] = byDay[k] || []).push(s);
+  });
+  const contests = store.get(KEYS.contests, []), cmap = {};
+  contests.forEach(c => { cmap[c.date] = c; });
+
+  const first = new Date(y, m, 1), lead = (first.getDay() + 6) % 7, days = new Date(y, m + 1, 0).getDate();
+  const wd = Array.from({ length: 7 }, (_, i) => new Date(2024, 0, 1 + i).toLocaleDateString(loc, { weekday: 'narrow' }));
+  let cells = '<span></span>'.repeat(lead), monthDays = 0, monthArrows = 0;
+  for (let d = 1; d <= days; d++) {
+    const k = dayKey(new Date(y, m, d)), n = arrows[k] || 0, c = cmap[k];
+    if (n) { monthDays++; monthArrows += n; }
+    const label = new Date(y, m, d).toLocaleDateString(loc, { day: 'numeric', month: 'long' }) + (n ? ` — ${n} flèches` : '') + (c ? ' — ★' : '');
+    cells += `<button class="cal-d d${n === 0 ? 0 : n < 30 ? 1 : n < 60 ? 2 : 3}${k === todayKey ? ' today' : ''}${k === app.cal.sel ? ' sel' : ''}" data-action="cal-day" data-d="${k}" aria-label="${label}">${d}${c ? '<i>★</i>' : ''}</button>`;
+  }
+
+  const up = contests.filter(c => c.date >= todayKey).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
+  const upHtml = up.length ? `<div class="cal-up"><h3>Prochains concours</h3>${up.map(c => {
+    const n = Math.round((new Date(c.date + 'T00:00:00') - new Date(todayKey + 'T00:00:00')) / 864e5);
+    const when = n === 0 ? "aujourd'hui" : n === 1 ? 'demain' : `dans ${n} jours`;
+    return `<div class="rec"><div><b>★ ${esc(c.name || 'Concours')}</b> <span class="muted">· ${new Date(c.date + 'T12:00:00').toLocaleDateString(loc, { day: 'numeric', month: 'short' })}</span></div><span class="chip">${when}</span></div>`;
+  }).join('')}</div>` : '';
+
+  const sel = app.cal.sel, ds = byDay[sel] || [], contest = cmap[sel];
+  const selLabel = new Date(sel + 'T12:00:00').toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long' });
+  const selHtml = `<div class="cal-sel"><h3 style="text-transform:capitalize;margin-bottom:6px">${selLabel}</h3>` +
+    (ds.length ? ds.map(s => { const st = sessionStats(s); return `<div class="rec"><div><b>${st.total} pts</b> <span class="muted">· ${esc(s.config.distance)} · ${st.count} flèches</span></div><button class="btn sm" data-action="open-session" data-id="${esc(s.id)}">Consulter</button></div>`; }).join('')
+      : '<p class="muted" style="margin:6px 0">Aucune séance ce jour.</p>') +
+    (contest
+      ? `<div class="rec"><div><b>★ ${esc(contest.name || 'Jour de concours')}</b></div><button class="btn sm danger" data-action="cal-contest-del" data-d="${sel}">Retirer</button></div>`
+      : `<div class="fields" style="margin-top:8px"><label>Nom du concours (facultatif)<input id="cal-name" maxlength="60" autocomplete="off"></label><button class="btn" data-action="cal-contest-add" data-d="${sel}">★ Marquer comme jour de concours</button></div>`) +
+    '</div>';
+
+  card.innerHTML = `<div class="cal-head">
+      <button class="btn sm icon-only" data-action="cal-prev" aria-label="Mois précédent">‹</button>
+      <h3 class="cal-title">${first.toLocaleDateString(loc, { month: 'long', year: 'numeric' })}</h3>
+      <button class="btn sm icon-only" data-action="cal-next" aria-label="Mois suivant">›</button>
+    </div>
+    <div class="cal-grid">${wd.map(w => `<span class="cal-wd">${w}</span>`).join('')}${cells}</div>
+    <p class="muted" style="margin:8px 0 0;font-size:13px">${monthDays} jours de tir ce mois · ${monthArrows} flèches · ★ jour de concours</p>
+    ${upHtml}${selHtml}`;
+}
+
+/* ---------- Partager l'application ---------- */
+async function shareApp() {
+  const url = new URL('./', location.href).href;
+  const text = t("Carnet de Tir Cible : l'appli gratuite pour noter ses scores de tir à l'arc (volées, impacts, statistiques). Android : menu ⋮ puis « Installer l'application ». iPhone : Safari, Partager, puis « Sur l'écran d'accueil ».");
+  try {
+    if (navigator.share) { await navigator.share({ title: t('Carnet de Tir Cible'), text, url }); return; }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  try { await navigator.clipboard.writeText(text + '\n' + url); toast('Lien copié : collez-le dans un message.'); }
+  catch (e) { toast(url); }
+}
+
 /* ---------- Actions (délégation d'événements) ---------- */
-const APP_VERSION = 'v17 · 20 oct. 2026';
+
+const APP_VERSION = 'v18 · 26 oct. 2026';
 let deferredInstall = null;
 /* ---------- Ordre des fenêtres (pages Saisie et Stats) ---------- */
 const ORD_LABELS = {
@@ -1638,6 +1868,16 @@ function endReorder() {
 }
 
 const actions = {
+  'timer-toggle': () => timerToggle(),
+  'timer-reset': () => timerReset(),
+  'cal-prev': () => calMove(-1),
+  'cal-next': () => calMove(1),
+  'cal-day': d => { app.cal.sel = d.d; renderCalendar(); },
+  'cal-contest-add': d => contestAdd(d.d),
+  'cal-contest-del': d => contestDel(d.d),
+  'copy-restore': d => restoreCopy(d.ts),
+  'copies-clear': () => clearCopies(),
+  'share-app': () => shareApp(),
   'ord-start': d => startReorder(d.tab),
   'ord-move': (d, b) => moveBlock(app.reorder, b.closest('.ord-bar').dataset.for, +d.dir),
   'ord-end': () => endReorder(),
@@ -1768,6 +2008,7 @@ function bindEvents() {
   ['pf-name', 'pf-bow'].forEach(id => $('#' + id).addEventListener('input', saveProfile));
   $('#pf-type').addEventListener('change', saveProfile);
   $('#pref-wake').addEventListener('change', savePrefs);
+  ['pref-timer', 'pref-timer-sec', 'pref-timer-sound', 'pref-autodl'].forEach(id => $('#' + id).addEventListener('change', savePrefs));
   $('#pref-backup').addEventListener('change', savePrefs);
   $('#pref-ref').addEventListener('change', savePrefs);
   $('#pref-weekly').addEventListener('change', savePrefs);
@@ -1814,6 +2055,8 @@ function init() {
   applyOrder();
   applyTheme();
   renderBackupBanner();
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  copiesAll().then(all => { if (app.sessions.length && (!all.length || Date.now() - all[0].ts > 20 * 3600e3)) copySave('quotidienne'); }).catch(() => {});
   $('#app-version').textContent = APP_VERSION;
 
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {

@@ -5,11 +5,13 @@
   --primary:#0e1a2b; --primary-ink:#fff; --danger:#c62f3f; --chart:#0a6c99;
   --gold:#FFD100; --red:#EE334E; --blue:#00A4E4; --black:#151515;
   --nav-h:64px;
+  --cal1:rgba(10,108,153,.16); --cal2:rgba(10,108,153,.38); --cal3:#0a6c99; --cal3-ink:#fff;
 }
 @media (prefers-color-scheme:dark){
   :root{
     --bg:#0a111d; --card:#131d2f; --ink:#e9eff8; --muted:#92a1b6; --line:#243249; --soft:#0e1727;
     --primary:#ffd100; --primary-ink:#161200; --danger:#ff7b89; --chart:#4cc3f5;
+    --cal1:rgba(76,195,245,.18); --cal2:rgba(76,195,245,.4); --cal3:#4cc3f5; --cal3-ink:#00141c;
   }
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -222,5 +224,22 @@ button.sc{min-width:32px;min-height:32px;font-size:13px}
 .ord-bar .row{flex-wrap:nowrap}
 #ord-top{position:fixed;left:0;right:0;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));z-index:19;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;background:var(--card);border-top:2px solid var(--primary);font-size:13px;font-weight:650}
 body.reorder{padding-bottom:calc(var(--nav-h) + 80px + env(safe-area-inset-bottom))}
+.timer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0}
+.timer-time{font-size:44px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.timer-time.warn{color:#d97706}
+.timer-time.bad{color:var(--danger)}
+.cal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.cal-title{text-transform:capitalize}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-wd{text-align:center;font-size:12px;font-weight:650;color:var(--muted)}
+.cal-d{position:relative;aspect-ratio:1;min-height:38px;border:0;border-radius:10px;background:var(--soft);color:var(--ink);font-weight:650;font-variant-numeric:tabular-nums;cursor:pointer}
+.cal-d.d1{background:var(--cal1)}
+.cal-d.d2{background:var(--cal2)}
+.cal-d.d3{background:var(--cal3);color:var(--cal3-ink)}
+.cal-d.today{box-shadow:inset 0 0 0 2px var(--ink)}
+.cal-d.sel{outline:3px solid var(--blue);outline-offset:1px}
+.cal-d i{position:absolute;top:1px;right:4px;font-size:11px;font-style:normal;color:var(--red)}
+.cal-d.d3 i{color:var(--gold)}
+.cal-sel,.cal-up{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 @media (max-width:360px){.big{font-size:46px}.key{font-size:22px}.minis{grid-template-columns:1fr 1fr}}

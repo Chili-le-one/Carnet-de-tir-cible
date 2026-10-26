@@ -2,9 +2,9 @@
    Chargé par index.html (<link rel="stylesheet" href="themes.css">).
    Sans ce fichier, l'appli garde son apparence de base (clair, ou sombre selon le téléphone). */
 /* Carnet de terrain (par défaut), Clair, Nuit ; « Automatique » = clair ou nuit selon le téléphone */
-:root[data-theme="clair"]{color-scheme:light;--bg:#e9edf2;--card:#fff;--ink:#0e1a2b;--muted:#5b6a7e;--line:#d5dce6;--soft:#f1f4f8;--primary:#0e1a2b;--primary-ink:#fff;--danger:#c62f3f;--chart:#0a6c99}
-:root[data-theme="nuit"]{color-scheme:dark;--bg:#0a111d;--card:#131d2f;--ink:#e9eff8;--muted:#92a1b6;--line:#243249;--soft:#0e1727;--primary:#ffd100;--primary-ink:#161200;--danger:#ff7b89;--chart:#4cc3f5}
-:root[data-theme="carnet"]{color-scheme:light;--bg:#efe6cf;--card:#fbf6e8;--ink:#1f3a6b;--muted:#6b6a5c;--line:#c9bf9f;--soft:#f3ecd7;--primary:#1f3a6b;--primary-ink:#fbf6e8;--danger:#a8321f;--chart:#1f3a6b}
+:root[data-theme="clair"]{color-scheme:light;--bg:#e9edf2;--card:#fff;--ink:#0e1a2b;--muted:#5b6a7e;--line:#d5dce6;--soft:#f1f4f8;--primary:#0e1a2b;--primary-ink:#fff;--danger:#c62f3f;--chart:#0a6c99;--cal1:rgba(10,108,153,.16);--cal2:rgba(10,108,153,.38);--cal3:#0a6c99;--cal3-ink:#fff}
+:root[data-theme="nuit"]{color-scheme:dark;--bg:#0a111d;--card:#131d2f;--ink:#e9eff8;--muted:#92a1b6;--line:#243249;--soft:#0e1727;--primary:#ffd100;--primary-ink:#161200;--danger:#ff7b89;--chart:#4cc3f5;--cal1:rgba(76,195,245,.18);--cal2:rgba(76,195,245,.4);--cal3:#4cc3f5;--cal3-ink:#00141c}
+:root[data-theme="carnet"]{color-scheme:light;--bg:#efe6cf;--card:#fbf6e8;--ink:#1f3a6b;--muted:#6b6a5c;--line:#c9bf9f;--soft:#f3ecd7;--primary:#1f3a6b;--primary-ink:#fbf6e8;--danger:#a8321f;--chart:#1f3a6b;--cal1:rgba(31,58,107,.15);--cal2:rgba(31,58,107,.35);--cal3:#1f3a6b;--cal3-ink:#fbf6e8}
 [data-theme="carnet"] body{background-image:radial-gradient(rgba(31,58,107,.17) 1px,transparent 1.3px);background-size:20px 20px}
 [data-theme="carnet"] .card,[data-theme="carnet"] .kpi,[data-theme="carnet"] .notice,[data-theme="carnet"] .mini{border-style:dashed}
 [data-theme="carnet"] td,[data-theme="carnet"] th{border-bottom-style:dotted}

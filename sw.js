@@ -1,21 +1,48 @@
-/* Stringwalker — service worker : fonctionnement 100 % hors ligne */
-const C='stringwalker-v6',F=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./icon-maskable-512.png','./apple-touch-icon.png'];
-self.addEventListener('install',e=>{
-  /* chaque fichier est mis en cache séparément : un manquant ne bloque pas l'installation */
-  e.waitUntil(caches.open(C).then(c=>Promise.all(F.map(u=>c.add(u).catch(()=>{})))));
-  self.skipWaiting();
+/* Service worker : permet d'utiliser le carnet hors ligne.
+   La page est toujours rechargée depuis le réseau quand il y en a un (les mises à jour
+   apparaissent donc dès l'ouverture suivante) ; le cache ne sert qu'en secours hors ligne.
+   Changez le numéro de version ci-dessous à chaque mise à jour de l'application. */
+const CACHE = 'carnet-tir-cible-v18';
+const ASSETS = ['./', './index.html', './manifest.webmanifest', './i18n.js', './themes.css', './style.css', './app.js', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
+
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(CACHE).then(c => Promise.all(ASSETS.map(f => c.add(f).catch(() => {})))).then(() => self.skipWaiting()));
 });
-self.addEventListener('activate',e=>{
-  e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>self.clients.claim()));
+
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
 });
-/* Cache d'abord (instantané même sans réseau ou avec une mauvaise réception),
-   puis mise à jour en arrière-plan : la nouvelle version apparaît au rechargement suivant. */
-self.addEventListener('fetch',e=>{
-  const r=e.request;if(r.method!=='GET')return;
-  if(new URL(r.url).pathname.endsWith('/version.json'))return; /* toujours depuis le réseau */
-  e.respondWith(caches.match(r,{ignoreSearch:true}).then(hit=>{
-    const net=fetch(r).then(res=>{if(res&&res.ok){const k=res.clone();caches.open(C).then(c=>c.put(r,k))}return res}).catch(()=>null);
-    if(hit){e.waitUntil(net);return hit}
-    return net.then(res=>res||(r.mode==='navigate'?caches.match('./index.html'):Response.error()));
-  }));
+
+async function networkFirst(req) {
+  const cache = await caches.open(CACHE);
+  try {
+    // Réseau d'abord, mais au plus 3 s : en salle, une connexion lente ne doit pas bloquer l'appli.
+    const res = await Promise.race([
+      fetch(req, { cache: 'no-cache' }),
+      new Promise((_, reject) => setTimeout(reject, 3000))
+    ]);
+    if (res.ok) cache.put(req, res.clone());
+    return res;
+  } catch (err) {
+    return (await cache.match(req, { ignoreSearch: true })) || (await cache.match('./index.html')) || Response.error();
+  }
+}
+
+async function cacheFirst(req) {
+  const hit = await caches.match(req, { ignoreSearch: true });
+  if (hit) return hit;
+  const res = await fetch(req);
+  if (res.ok) { const c = await caches.open(CACHE); c.put(req, res.clone()); }
+  return res;
+}
+
+self.addEventListener('fetch', e => {
+  const req = e.request;
+  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  const isPage = req.mode === 'navigate' || ['document', 'script', 'style', 'manifest'].includes(req.destination);
+  e.respondWith(isPage ? networkFirst(req) : cacheFirst(req));
 });
