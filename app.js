@@ -256,7 +256,6 @@ function addArrow(v, x = null, y = null) {
       return;
     }
     s.currentEndIndex++;
-    timerReset();
     buzz([20, 40, 20]);
     toast(`Volée ${idx + 1} : ${sumScore(end)} points`);
   }
@@ -550,7 +549,7 @@ function analyze(s) {
 }
 
 /* ---------- Écran toujours allumé ---------- */
-const getPrefs = () => Object.assign({ wake: true, backupEvery: 5, refArrows: 60, weeklyGoal: 0, lang: 'auto', theme: 'carnet', timer: true, timerSec: 40, timerSound: true, autoDl: false }, store.get(KEYS.prefs, {}));
+const getPrefs = () => Object.assign({ wake: true, backupEvery: 5, refArrows: 60, weeklyGoal: 0, lang: 'auto', theme: 'carnet', timer: true, timerEnd: 120, timerSound: true, autoDl: false }, store.get(KEYS.prefs, {}));
 const THEME_COLORS = { carnet: '#efe6cf', clair: '#ffffff', nuit: '#131d2f' };
 function applyTheme() {
   const th = getPrefs().theme;
@@ -620,7 +619,7 @@ function renderSettings() {
   $('#pf-type').value = pr.type || '';
   $('#pref-wake').checked = !!pf.wake;
   $('#pref-timer').checked = !!pf.timer;
-  $('#pref-timer-sec').value = pf.timerSec;
+  $('#pref-timer-end').value = pf.timerEnd;
   $('#pref-timer-sound').checked = !!pf.timerSound;
   $('#pref-autodl').checked = !!pf.autoDl;
   $('#autodl-wrap').hidden = IS_IOS;
@@ -640,7 +639,7 @@ function savePrefs() {
   store.set(KEYS.prefs, Object.assign({}, getPrefs(), {
     wake: $('#pref-wake').checked,
     timer: $('#pref-timer').checked,
-    timerSec: Math.max(10, Math.min(120, parseInt($('#pref-timer-sec').value, 10) || 40)),
+    timerEnd: Math.max(10, Math.min(900, parseInt($('#pref-timer-end').value, 10) || 120)),
     timerSound: $('#pref-timer-sound').checked,
     autoDl: $('#pref-autodl').checked,
     backupEvery: parseInt($('#pref-backup').value, 10),
@@ -1618,7 +1617,7 @@ function timerAlert(freq, ms, vib) {
     o.start(); o.stop(audioCtx.currentTime + ms / 1000);
   } catch (e) {}
 }
-const timerTotal = () => app.session ? getPrefs().timerSec * app.session.config.arrowsPerEnd : 0;
+const timerTotal = () => getPrefs().timerEnd;      // durée totale d'une volée, indépendante du nombre de flèches et de la saisie
 function timerStop() { clearInterval(timer.iv); timer.iv = null; timer.running = false; }
 function timerReset() { timerStop(); timer.total = timer.left = timerTotal(); timer.warned = false; timerRender(); }
 function timerToggle() {
@@ -1640,16 +1639,33 @@ function timerTick() {
   if (timer.left <= 0) { timerStop(); timerAlert(440, 800, [300, 100, 300]); toast('Temps écoulé !'); }
   timerRender();
 }
+function timerFillDur() {
+  const sel = $('#timer-dur'), cur = timerTotal();
+  const fmt = n => Math.floor(n / 60) + ':' + String(n % 60).padStart(2, '0');
+  const list = [...new Set([20, 30, 40, 60, 90, 120, 180, 240, 300, cur])].sort((a, b) => a - b);
+  const sig = list.join(',');
+  if (sel.dataset.sig !== sig) { sel.innerHTML = list.map(n => `<option value="${n}">${fmt(n)}</option>`).join(''); sel.dataset.sig = sig; }
+  sel.value = String(cur);
+  sel.disabled = timer.running;
+}
 function timerRender() {
   const s = app.session, box = $('#timer-box');
+  timerFillDur();
   const on = !!(getPrefs().timer && s && !s.finished);
-  box.hidden = !on;
-  if (!on) { timerStop(); timer.sid = null; return; }
+  const preview = app.reorder === 'shoot' && !!s;       // en mode « Disposition », on le montre même désactivé
+  box.hidden = !(on || preview);
+  box.classList.toggle('off', preview && !on);
+  const fmt = n => Math.floor(Math.ceil(n) / 60) + ':' + String(Math.ceil(n) % 60).padStart(2, '0');
+  if (!on) {
+    timerStop(); timer.sid = null;
+    if (preview) { $('#timer-time').textContent = fmt(timerTotal()); $('#timer-go-label').textContent = 'Démarrer'; $('#timer-go-ic').innerHTML = icon('play'); }
+    return;
+  }
   if (timer.sid !== s.id || (!timer.running && timer.total !== timerTotal())) {
     timerStop(); timer.sid = s.id; timer.total = timer.left = timerTotal(); timer.warned = false;
   }
   const sec = Math.ceil(timer.left), el = $('#timer-time');
-  el.textContent = Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+  el.textContent = fmt(timer.left);
   el.className = 'timer-time' + (timer.running && sec <= 10 ? ' bad' : timer.running && sec <= 30 ? ' warn' : '');
   $('#timer-go-label').textContent = timer.running ? 'Pause' : (timer.left >= timer.total ? 'Démarrer' : (timer.left > 0 ? 'Reprendre' : 'Redémarrer'));
   $('#timer-go-ic').innerHTML = icon(timer.running ? 'pause' : 'play');
@@ -1805,11 +1821,11 @@ async function shareApp() {
 
 /* ---------- Actions (délégation d'événements) ---------- */
 
-const APP_VERSION = 'v18 · 26 oct. 2026';
+const APP_VERSION = 'v19 · 26 oct. 2026';
 let deferredInstall = null;
 /* ---------- Ordre des fenêtres (pages Saisie et Stats) ---------- */
 const ORD_LABELS = {
-  statut: 'Résumé', volee: 'Volée en cours', mode: 'Boutons Clavier / Cible', saisie: 'Saisie des flèches', notes: 'Notes de la séance', feuille: 'Feuille de marque',
+  statut: 'Résumé', volee: 'Volée en cours', minuteur: 'Minuteur', mode: 'Boutons Clavier / Cible', saisie: 'Saisie des flèches', notes: 'Notes de la séance', feuille: 'Feuille de marque',
   kpis: 'Chiffres clés', objectif: 'Objectif', evolution: 'Évolution', regularite: 'Régularité', repartition: 'Répartition',
   carte: 'Carte des impacts', volees: 'Cartographie par volée', records: 'Records', volume: "Volume d'entraînement"
 };
@@ -1821,6 +1837,7 @@ function applyOrder() {
   const saved = store.get(KEYS.order, {});
   const ids = saved.shoot || [];            // ancien ordre enregistré : les boutons de mode se placent juste avant la saisie
   if (ids.includes('saisie') && !ids.includes('mode')) ids.splice(ids.indexOf('saisie'), 0, 'mode');
+  if (ids.includes('volee') && !ids.includes('minuteur')) ids.splice(ids.indexOf('volee') + 1, 0, 'minuteur');   // nouveau bloc : juste après la volée en cours
   ['shoot', 'stats'].forEach(tab => ordBlocks(tab).forEach((el, i) => {
     const k = (saved[tab] || []).indexOf(el.dataset.ord);
     el.style.order = k < 0 ? 1000 + i : k;       // fenêtres inconnues : à la fin, dans l'ordre d'origine
@@ -1846,6 +1863,7 @@ function startReorder(tab) {
   if (tab === 'stats' && !app.sessions.length) { toast('Terminez une séance pour réorganiser la page Stats.'); return; }
   switchTab(tab);
   app.reorder = tab;
+  timerRender();                                  // le minuteur reste visible (estompé s'il est désactivé) pour pouvoir le placer
   document.body.classList.add('reorder');
   $('#ord-top').hidden = false;
   ordBlocks(tab).forEach(el => {
@@ -1853,6 +1871,7 @@ function startReorder(tab) {
     bar.className = 'ord-bar';
     bar.dataset.for = el.dataset.ord;
     bar.innerHTML = `<span>${esc(ORD_LABELS[el.dataset.ord] || el.dataset.ord)}</span><span class="row">` +
+      (el.dataset.ord === 'minuteur' ? `<button class="btn sm" data-action="timer-pref">${getPrefs().timer ? 'Masquer' : 'Afficher'}</button>` : '') +
       `<button class="btn sm icon-only" data-action="ord-move" data-dir="-1" aria-label="Monter">↑</button>` +
       `<button class="btn sm icon-only" data-action="ord-move" data-dir="1" aria-label="Descendre">↓</button></span>`;
     el.parentNode.insertBefore(bar, el);
@@ -1862,12 +1881,21 @@ function startReorder(tab) {
 function endReorder() {
   if (!app.reorder) return;
   app.reorder = null;
+  timerRender();
   $$('.ord-bar').forEach(b => b.remove());
   $('#ord-top').hidden = true;
   document.body.classList.remove('reorder');
 }
 
 const actions = {
+  'timer-pref': () => {
+    const p = getPrefs();
+    store.set(KEYS.prefs, Object.assign({}, p, { timer: !p.timer }));
+    const b = $('.ord-bar[data-for="minuteur"] [data-action="timer-pref"]');
+    if (b) b.textContent = p.timer ? 'Afficher' : 'Masquer';
+    timerRender();
+  },
+  'timer-hide': () => { store.set(KEYS.prefs, Object.assign({}, getPrefs(), { timer: false })); timerRender(); toast('Minuteur masqué : réaffichez-le dans Réglages ou en mode Disposition.'); },
   'timer-toggle': () => timerToggle(),
   'timer-reset': () => timerReset(),
   'cal-prev': () => calMove(-1),
@@ -2008,7 +2036,12 @@ function bindEvents() {
   ['pf-name', 'pf-bow'].forEach(id => $('#' + id).addEventListener('input', saveProfile));
   $('#pf-type').addEventListener('change', saveProfile);
   $('#pref-wake').addEventListener('change', savePrefs);
-  ['pref-timer', 'pref-timer-sec', 'pref-timer-sound', 'pref-autodl'].forEach(id => $('#' + id).addEventListener('change', savePrefs));
+  $('#timer-dur').addEventListener('change', e => {
+    if (timer.running) { timerFillDur(); return; }
+    store.set(KEYS.prefs, Object.assign({}, getPrefs(), { timerEnd: +e.target.value }));
+    timerReset();
+  });
+  ['pref-timer', 'pref-timer-end', 'pref-timer-sound', 'pref-autodl'].forEach(id => $('#' + id).addEventListener('change', savePrefs));
   $('#pref-backup').addEventListener('change', savePrefs);
   $('#pref-ref').addEventListener('change', savePrefs);
   $('#pref-weekly').addEventListener('change', savePrefs);

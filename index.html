@@ -75,17 +75,22 @@
           <h2>Volée <span id="end-no">1</span></h2>
           <span class="muted">Total <b id="end-sum" style="color:var(--ink)">0</b></span>
         </div>
-        <div id="timer-box" class="timer" hidden>
-          <div id="timer-time" class="timer-time" role="timer">0:00</div>
-          <div class="row">
-            <button class="btn primary" data-action="timer-toggle"><span id="timer-go-ic"></span><span id="timer-go-label">Démarrer</span></button>
-            <button class="btn icon-only" data-action="timer-reset" aria-label="Réinitialiser le minuteur"><span data-i="undo"></span></button>
-          </div>
-        </div>
         <div id="slots" class="slots"></div>
         <div class="row">
           <button class="btn" data-action="undo"><span data-i="undo"></span>Annuler la dernière</button>
           <button class="btn danger" data-action="clear-end"><span data-i="trash"></span>Effacer la volée</button>
+        </div>
+      </div>
+
+      <div id="timer-box" class="card timer" data-ord="minuteur" hidden>
+        <div id="timer-time" class="timer-time" role="timer">0:00</div>
+        <div class="row">
+          <button class="btn primary" data-action="timer-toggle"><span id="timer-go-ic"></span><span id="timer-go-label">Démarrer</span></button>
+          <button class="btn icon-only" data-action="timer-reset" aria-label="Réinitialiser le minuteur"><span data-i="undo"></span></button>
+        </div>
+        <div class="timer-opts">
+          <select id="timer-dur" aria-label="Durée du minuteur"></select>
+          <button class="btn sm" data-action="timer-hide">Masquer</button>
         </div>
       </div>
 
@@ -229,7 +234,7 @@
       <div class="fields">
         <label class="check"><input type="checkbox" id="pref-wake">Garder l'écran allumé pendant une séance</label>
         <label class="check"><input type="checkbox" id="pref-timer">Minuteur de volée</label>
-        <label>Durée par flèche (secondes)<input id="pref-timer-sec" type="number" inputmode="numeric" min="10" max="120" placeholder="40"></label>
+        <label>Durée du minuteur (secondes)<input id="pref-timer-end" type="number" inputmode="numeric" min="10" max="900" placeholder="120"></label>
         <label class="check"><input type="checkbox" id="pref-timer-sound">Sons et vibration du minuteur</label>
         <label>Flèches de référence pour les objectifs<input id="pref-ref" type="number" inputmode="numeric" min="6" max="144" placeholder="60"></label>
         <label>Objectif hebdomadaire (flèches par semaine)<input id="pref-weekly" type="number" inputmode="numeric" min="0" placeholder="ex. 300"></label>

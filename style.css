@@ -224,7 +224,10 @@ button.sc{min-width:32px;min-height:32px;font-size:13px}
 .ord-bar .row{flex-wrap:nowrap}
 #ord-top{position:fixed;left:0;right:0;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));z-index:19;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;background:var(--card);border-top:2px solid var(--primary);font-size:13px;font-weight:650}
 body.reorder{padding-bottom:calc(var(--nav-h) + 80px + env(safe-area-inset-bottom))}
-.timer{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 0}
+.timer{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.timer-opts{display:flex;align-items:center;gap:8px;width:100%}
+.timer-opts select{flex:1;min-height:38px}
+#timer-box.off{opacity:.5}
 .timer-time{font-size:44px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 .timer-time.warn{color:#d97706}
 .timer-time.bad{color:var(--danger)}
