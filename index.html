@@ -253,14 +253,6 @@
             <option value="en">English</option>
           </select>
         </label>
-        <label>Rappel de sauvegarde
-          <select id="pref-backup">
-            <option value="5">Toutes les 5 séances</option>
-            <option value="10">Toutes les 10 séances</option>
-            <option value="20">Toutes les 20 séances</option>
-            <option value="0">Jamais</option>
-          </select>
-        </label>
       </div>
     </div>
 
@@ -288,29 +280,39 @@
     </div>
 
     <div class="card">
-      <h2 style="margin-bottom:6px">Sauvegarde automatique</h2>
-      <p class="muted" style="margin-top:0;font-size:13px">L'appli garde seule des copies de sécurité sur l'appareil : une par jour, une à la fin de chaque séance et une avant toute suppression (les 8 dernières). Elles permettent de récupérer une séance supprimée par erreur.</p>
-      <div id="copies-list"></div>
-      <label id="autodl-wrap" class="check" style="margin-top:12px"><input type="checkbox" id="pref-autodl">Enregistrer aussi un fichier dans les téléchargements à la fin de chaque séance</label>
-      <p class="muted" style="margin:8px 0 0;font-size:13px">Une appli web ne peut pas envoyer seule vos données vers un cloud : le fichier reste sur le téléphone. S'il est synchronisé (Google Drive, Syncthing…), il vous protège aussi si le téléphone est perdu.</p>
-    </div>
-
-    <div class="card">
       <h2 style="margin-bottom:6px">Sauvegarde</h2>
       <p class="muted" style="margin-top:0">Vos séances sont enregistrées uniquement sur cet appareil. <span id="backup-status"></span></p>
-      <button class="btn primary big" data-action="share-backup"><span data-i="upload"></span>Partager la sauvegarde</button>
-      <div class="grid2" style="margin-top:10px">
-        <button class="btn" data-action="export-json"><span data-i="download"></span>Export JSON</button>
-        <button class="btn" data-action="export-csv"><span data-i="download"></span>Export CSV</button>
+      <div class="grid2">
+        <button class="btn primary big" data-action="share-backup"><span data-i="upload"></span>Sauvegarder</button>
+        <button class="btn big" data-action="restore-open"><span data-i="download"></span>Restaurer</button>
       </div>
-      <button class="btn big" style="margin-top:10px" data-action="copy-json"><span data-i="list"></span>Copier mes séances (texte JSON)</button>
-      <label class="btn big" for="file-import" style="margin-top:10px;cursor:pointer"><span data-i="upload"></span>Importer un fichier de sauvegarde</label>
-      <input id="file-import" class="sr-only" type="file">
-      <label style="margin-top:12px">Ou collez ici le contenu d'une sauvegarde
-        <textarea id="paste-json" rows="3" placeholder="[ { &quot;id&quot;: &quot;session_…&quot; } ]" style="font:13px/1.3 ui-monospace,monospace"></textarea>
-      </label>
-      <button class="btn" style="margin-top:8px" data-action="import-text"><span data-i="upload"></span>Importer le texte collé</button>
-      <p id="import-status" role="status" style="margin:10px 0 0;font-weight:650" hidden></p>
+      <p class="muted" style="margin:10px 0 0;font-size:13px">L'appli fait aussi seule des copies de sécurité sur l'appareil : une par jour, une à la fin de chaque séance et une avant toute suppression.</p>
+      <details class="adv">
+        <summary>Options avancées</summary>
+        <div class="fields">
+        <label>Rappel de sauvegarde
+          <select id="pref-backup">
+            <option value="5">Toutes les 5 séances</option>
+            <option value="10">Toutes les 10 séances</option>
+            <option value="20">Toutes les 20 séances</option>
+            <option value="0">Jamais</option>
+          </select>
+        </label>
+          <label id="autodl-wrap" class="check"><input type="checkbox" id="pref-autodl">Enregistrer aussi un fichier dans les téléchargements à la fin de chaque séance</label>
+          <p class="muted" style="margin:0;font-size:13px">Une appli web ne peut pas envoyer seule vos données vers un cloud : le fichier reste sur le téléphone. S'il est synchronisé (Google Drive, Syncthing…), il vous protège aussi si le téléphone est perdu.</p>
+          <div class="grid2">
+            <button class="btn" data-action="export-json"><span data-i="download"></span>Export JSON</button>
+            <button class="btn" data-action="export-csv"><span data-i="download"></span>Export CSV</button>
+          </div>
+          <button class="btn" data-action="copy-json"><span data-i="list"></span>Copier mes séances (texte JSON)</button>
+          <label>Ou collez ici le contenu d'une sauvegarde
+            <textarea id="paste-json" rows="3" placeholder="[ { &quot;id&quot;: &quot;session_…&quot; } ]" style="font:13px/1.3 ui-monospace,monospace"></textarea>
+          </label>
+          <button class="btn" data-action="import-text"><span data-i="upload"></span>Importer le texte collé</button>
+          <p id="import-status" role="status" style="margin:0;font-weight:650" hidden></p>
+          <button class="btn danger" data-action="copies-clear"><span data-i="trash"></span>Supprimer les copies automatiques</button>
+        </div>
+      </details>
     </div>
 
     <div class="card">
@@ -397,6 +399,21 @@
 </dialog>
 
 <!-- ============ BILAN ============ -->
+<dialog id="dlg-restore" aria-labelledby="restore-title">
+  <div class="dlg">
+    <div class="row between">
+      <h2 id="restore-title">Restaurer</h2>
+      <button class="btn sm icon-only" data-action="close" data-target="dlg-restore" aria-label="Fermer"><span data-i="x"></span></button>
+    </div>
+    <label class="btn big" for="file-import" style="cursor:pointer"><span data-i="download"></span>Depuis un fichier de sauvegarde</label>
+    <input id="file-import" class="sr-only" type="file">
+    <div>
+      <h3 style="margin-bottom:4px">Copies automatiques</h3>
+      <div id="copies-list"></div>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="dlg-summary" aria-labelledby="sum-title">
   <div class="dlg" id="summary-body"></div>
 </dialog>

@@ -1574,7 +1574,7 @@ function importFromText(text) {
 }
 function importJSON(file) {
   const reader = new FileReader();
-  reader.onload = () => importFromText(reader.result);
+  reader.onload = () => { importFromText(reader.result); $('#dlg-restore').close(); };
   reader.onerror = () => { const st = $('#import-status'); st.hidden = false; st.style.color = 'var(--danger)'; st.textContent = 'Impossible de lire ce fichier.'; };
   reader.readAsText(file);
 }
@@ -1707,8 +1707,7 @@ async function renderCopies() {
   let all = [];
   try { all = await copiesAll(); } catch (e) {}
   box.innerHTML = all.length
-    ? all.map(c => `<div class="rec"><div><b>${fmtDate(new Date(c.ts).toISOString(), true)}</b><div class="muted" style="font-size:13px">${c.count} séances · ${esc(c.reason)}</div></div><button class="btn sm" data-action="copy-restore" data-ts="${c.ts}">Restaurer</button></div>`).join('') +
-      '<button class="btn sm danger" style="margin-top:8px" data-action="copies-clear">Supprimer les copies</button>'
+    ? all.map(c => `<div class="rec"><div><b>${fmtDate(new Date(c.ts).toISOString(), true)}</b><div class="muted" style="font-size:13px">${c.count} séances · ${esc(c.reason)}</div></div><button class="btn sm" data-action="copy-restore" data-ts="${c.ts}">Restaurer</button></div>`).join('')
     : '<p class="muted" style="margin:6px 0 0">Aucune copie pour l\'instant : la première est faite à la fin de votre prochaine séance.</p>';
 }
 async function restoreCopy(ts) {
@@ -1723,7 +1722,7 @@ async function restoreCopy(ts) {
   app.sessions = data.map(x => Object.assign(x, { finished: true }));
   saveSessions();
   if (app.session && app.session.finished) setSession(null);
-  renderCopies();
+  $('#dlg-restore').close();
   renderHistory();
   toast('Copie restaurée.');
 }
@@ -1821,7 +1820,7 @@ async function shareApp() {
 
 /* ---------- Actions (délégation d'événements) ---------- */
 
-const APP_VERSION = 'v19 · 26 oct. 2026';
+const APP_VERSION = 'v20 · 27 oct. 2026';
 let deferredInstall = null;
 /* ---------- Ordre des fenêtres (pages Saisie et Stats) ---------- */
 const ORD_LABELS = {
@@ -1904,6 +1903,7 @@ const actions = {
   'cal-contest-add': d => contestAdd(d.d),
   'cal-contest-del': d => contestDel(d.d),
   'copy-restore': d => restoreCopy(d.ts),
+  'restore-open': () => { renderCopies(); $('#dlg-restore').showModal(); },
   'copies-clear': () => clearCopies(),
   'share-app': () => shareApp(),
   'ord-start': d => startReorder(d.tab),

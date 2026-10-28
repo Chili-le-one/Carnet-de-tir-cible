@@ -183,6 +183,9 @@ nav.tabs button[aria-current=page]{color:var(--ink);font-weight:800;box-shadow:i
 .notice.win{background:var(--gold);color:#1a1500;border-color:transparent;font-weight:700}
 details.card>summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:32px}
 details.card>summary::-webkit-details-marker{display:none}
+details.adv{margin-top:12px;border-top:1px solid var(--line);padding-top:4px}
+details.adv>summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;align-items:center}
+details.adv[open]>summary{margin-bottom:10px}
 details.card[open]>summary{margin-bottom:12px}
 textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--soft);color:var(--ink);font:inherit;resize:vertical}
 .fields{display:grid;gap:10px}
