@@ -247,5 +247,16 @@ body.reorder{padding-bottom:calc(var(--nav-h) + 80px + env(safe-area-inset-botto
 .cal-d i{position:absolute;top:1px;right:4px;font-size:11px;font-style:normal;color:var(--red)}
 .cal-d.d3 i{color:var(--gold)}
 .cal-sel,.cal-up{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+/* Saisie rapide : seulement le nécessaire, sans défilement */
+body.quick-on .top{display:none}
+body.quick-on main{padding-top:10px}
+#shoot-main.quick{min-height:calc(100dvh - var(--nav-h) - env(safe-area-inset-bottom) - 28px)}
+#shoot-main.quick [data-ord=notes],#shoot-main.quick [data-ord=feuille]{display:none}
+#shoot-main.quick [data-ord=statut] .minis .mini:not(:first-child),#shoot-main.quick [data-ord=statut] #s-proj{display:none}
+#shoot-main.quick [data-action=clear-end],#shoot-main.quick .timer-opts{display:none}
+#shoot-main.quick .slots{margin:6px 0}
+#shoot-main.quick [data-ord=saisie]{flex:1;display:flex;flex-direction:column}
+#shoot-main.quick [data-ord=saisie] .keypad{flex:1;grid-auto-rows:1fr}
+#shoot-main.quick #svg-target{max-height:40dvh}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 @media (max-width:360px){.big{font-size:46px}.key{font-size:22px}.minis{grid-template-columns:1fr 1fr}}

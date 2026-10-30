@@ -57,7 +57,7 @@
       <div class="card" data-ord="statut">
         <div class="row between">
           <div class="row"><span class="chip" id="chip-dist"></span><span class="chip" id="chip-target"></span></div>
-          <button class="btn sm" id="btn-finish" data-action="finish-early"><span data-i="flag"></span>Terminer</button>
+          <div class="row"><button class="btn sm" id="btn-quick" data-action="quick-toggle">Saisie rapide</button><button class="btn sm" id="btn-finish" data-action="finish-early"><span data-i="flag"></span>Terminer</button></div>
         </div>
         <div class="total"><span class="big" id="s-total">0</span><span class="muted" id="s-max"></span></div>
         <div id="s-proj" class="muted" style="font-size:14px;font-weight:650" hidden></div>
@@ -270,6 +270,13 @@
     </div>
 
     <div class="card">
+      <h2 style="margin-bottom:6px">Modèles de séance</h2>
+      <p class="muted" style="margin-top:0;font-size:13px">Dans « Nouvelle séance », un modèle se lance d'un seul toucher. Pour en créer ou en modifier un, réglez la séance puis « Enregistrer comme modèle » (même nom : le modèle est remplacé).</p>
+      <div id="tpl-list"></div>
+      <button class="btn sm" style="margin-top:8px" data-action="tpl-reset">Rétablir les modèles de départ</button>
+    </div>
+
+    <div class="card">
       <h2 style="margin-bottom:6px">Disposition</h2>
       <p class="muted" style="margin-top:0">Choisissez l'ordre des fenêtres de chaque page avec les flèches ↑ ↓.</p>
       <div class="grid2">
@@ -359,7 +366,7 @@
       </div>
     </div>
 
-    <div class="lbl">Formats rapides<div id="presets" class="presets"></div></div>
+    <div class="lbl">Mes modèles<div id="presets" class="presets"></div><span class="muted" style="font-size:13px;font-weight:400">Touchez un modèle pour démarrer tout de suite.</span></div>
 
     <label>Distance
       <select id="cfg-distance">
@@ -386,6 +393,10 @@
     <label>Viseur
       <select id="cfg-sight"><option value="yes">Avec viseur</option><option value="no">Sans viseur</option></select>
     </label>
+    <label>Objectif de score (facultatif)
+      <input id="cfg-goal" type="number" inputmode="numeric" min="0" placeholder="ex. 540">
+    </label>
+    <label class="check"><input type="checkbox" id="cfg-quick">Saisie rapide (écran réduit, notes à la fin)</label>
     <div class="two">
       <label>Flèches par volée
         <select id="cfg-ape"><option value="1">1 flèche</option><option value="2">2 flèches</option><option value="3">3 flèches</option><option value="4">4 flèches</option><option value="5">5 flèches</option><option value="6">6 flèches</option><option value="7">7 flèches</option><option value="8">8 flèches</option><option value="9">9 flèches</option><option value="10">10 flèches</option><option value="11">11 flèches</option><option value="12">12 flèches</option></select>
@@ -394,6 +405,13 @@
         <input id="cfg-ends" type="number" inputmode="numeric" min="1" max="60" value="10">
       </label>
     </div>
+    <details class="adv">
+      <summary>Enregistrer comme modèle</summary>
+      <div class="fields">
+        <label>Nom du modèle<input id="tpl-name" maxlength="30" autocomplete="off" placeholder="ex. Mon entraînement du mardi"></label>
+        <button class="btn" data-action="tpl-save"><span data-i="check"></span>Enregistrer comme modèle</button>
+      </div>
+    </details>
     <button class="btn primary big" data-action="start"><span data-i="check"></span>Démarrer la séance</button>
   </div>
 </dialog>
@@ -410,6 +428,34 @@
     <div>
       <h3 style="margin-bottom:4px">Copies automatiques</h3>
       <div id="copies-list"></div>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dlg-endnotes" aria-labelledby="en-title">
+  <div class="dlg">
+    <h2 id="en-title">Notes de fin de séance</h2>
+    <p class="muted" style="margin:0">Conditions et remarques à noter maintenant (facultatif).</p>
+    <div class="fields">
+      <div class="two">
+        <label>Conditions
+          <select id="en-weather">
+                <option value="">–</option><option>Salle</option><option>Soleil</option><option>Nuageux</option>
+                <option>Vent</option><option>Pluie</option><option>Froid</option><option>Chaud</option>
+              </select>
+        </label>
+        <label>Distance réelle<input id="en-real" placeholder="ex. 71 m" autocomplete="off"></label>
+      </div>
+      <div class="lbl">Sensations (1 = difficile, 5 = excellent)
+        <div class="feel" id="en-feel">
+          <button data-action="en-feel" data-v="1" aria-pressed="false">1</button><button data-action="en-feel" data-v="2" aria-pressed="false">2</button><button data-action="en-feel" data-v="3" aria-pressed="false">3</button><button data-action="en-feel" data-v="4" aria-pressed="false">4</button><button data-action="en-feel" data-v="5" aria-pressed="false">5</button>
+        </div>
+      </div>
+      <label>Réglages, remarques<textarea id="en-text" rows="3" placeholder="Fenêtre, viseur, repère, point faible…"></textarea></label>
+    </div>
+    <div class="grid2">
+      <button class="btn" data-action="endnotes-skip">Passer</button>
+      <button class="btn primary" data-action="endnotes-save">Enregistrer</button>
     </div>
   </div>
 </dialog>

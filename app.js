@@ -22,7 +22,8 @@ const KEYS = {
   sight: 'carnet_tir_viseur',
   gear: 'carnet_tir_materiel',
   order: 'carnet_tir_ordre',
-  contests: 'carnet_tir_concours'
+  contests: 'carnet_tir_concours',
+  templates: 'carnet_tir_modeles'
 };
 
 const PRESETS = [
@@ -225,6 +226,8 @@ function createSession(cfg) {
     archer: pr.name || '', bow: pr.bow || '', bowType: pr.type || '',
     config: { distance: cfg.distance, targetType: cfg.target, arrowsPerEnd: cfg.ape, totalEnds: cfg.ends },
     ...(cfg.sight === 'no' ? { noSight: true } : {}),   // séance sans viseur : pas d'aide au réglage
+    ...(cfg.goal ? { goal: cfg.goal } : {}),             // objectif propre à la séance (modèle)
+    ...(cfg.quick ? { quick: true } : {}),               // saisie rapide : écran réduit, notes à la fin
     currentEndIndex: 0,
     ends: []
   };
@@ -302,7 +305,7 @@ function finishSession(early) {
   app.pending = null;
   renderShoot();
   buzz([30, 60, 30]);
-  openSummary(s, true);
+  if (s.quick) endNotesOpen(s); else openSummary(s, true);
 }
 
 async function finishEarly() {
@@ -378,7 +381,7 @@ function renderShoot() {
   const s = app.session;
   $('#shoot-empty').hidden = !!s;
   $('#shoot-main').hidden = !s;
-  if (!s) { updateWakeLock(); timerRender(); return; }
+  if (!s) { updateWakeLock(); timerRender(); applyQuick(); return; }
 
   const c = s.config, st = sessionStats(s), f = face(c);
   const idx = Math.min(s.currentEndIndex, c.totalEnds - 1);
@@ -447,6 +450,7 @@ function renderShoot() {
   renderNotes();
   updateWakeLock();
   timerRender();
+  applyQuick();
 }
 
 function renderImpactLayer() {
@@ -538,13 +542,49 @@ function setGoal(key, v) {
   if (v > 0) g[key] = v; else delete g[key];
   store.set(KEYS.goals, g);
 }
+/* Records : on ne compare que des séances de même distance et de même blason.
+   - Record du format : même nombre de flèches, meilleur total.
+   - Record par distance : meilleure moyenne par flèche (séances d'au moins RECORD_MIN flèches).
+   - Record sur N flèches : meilleure série de N flèches consécutives (30 et 60). */
+const RECORD_MIN = 30, SERIES = [30, 60];
+function seriesBest(s, n) {
+  const a = sessionStats(s).arrows;
+  if (a.length < n) return null;
+  let sum = 0, best = -1;
+  for (let i = 0; i < a.length; i++) {
+    sum += a[i].scoreVal;
+    if (i >= n) sum -= a[i - n].scoreVal;
+    if (i >= n - 1 && sum > best) best = sum;
+  }
+  return best;
+}
+function recordsOf(list) {
+  const r = { formats: {}, avg: null, series: {}, ends: {} };
+  list.forEach(x => {
+    const st = sessionStats(x);
+    if (st.complete && (!r.formats[st.planned] || st.total > r.formats[st.planned].v)) r.formats[st.planned] = { v: st.total, date: x.date };
+    if (st.count >= RECORD_MIN && (!r.avg || st.avg > r.avg.v)) r.avg = { v: st.avg, date: x.date };
+    SERIES.forEach(n => { const b = seriesBest(x, n); if (b !== null && (!r.series[n] || b > r.series[n].v)) r.series[n] = { v: b, date: x.date }; });
+    (x.ends || []).forEach(end => {
+      if (!end || end.length !== x.config.arrowsPerEnd) return;
+      const v = sumScore(end), ape = x.config.arrowsPerEnd;
+      if (!r.ends[ape] || v > r.ends[ape].v) r.ends[ape] = { v, date: x.date };
+    });
+  });
+  return r;
+}
 function analyze(s) {
   const st = sessionStats(s), key = formatKey(s);
   const others = app.sessions.filter(x => x.id !== s.id && formatKey(x) === key && sessionStats(x).complete);
   const prevBest = others.length ? Math.max(...others.map(x => sessionStats(x).total)) : null;
-  const goal = getGoals()[goalKey(s.config)] || 0;
+  const goal = s.goal || getGoals()[goalKey(s.config)] || 0;
   const projected = projectedScore(s);
-  return { prevBest, record: st.complete && prevBest !== null && st.total > prevBest, goal, projected,
+  const same = app.sessions.filter(x => x.id !== s.id && goalKey(x.config) === goalKey(s.config));
+  const prev = recordsOf(same), cur = recordsOf([s]), recs = [];
+  if (st.complete && prevBest !== null && st.total > prevBest) recs.push({ type: 'format', v: st.total, prev: prevBest });
+  if (cur.avg && prev.avg && cur.avg.v > prev.avg.v) recs.push({ type: 'distance', v: cur.avg.v, prev: prev.avg.v });
+  SERIES.forEach(n => { if (cur.series[n] && prev.series[n] && cur.series[n].v > prev.series[n].v) recs.push({ type: 'serie', n, v: cur.series[n].v, prev: prev.series[n].v }); });
+  return { prevBest, record: recs.some(r => r.type === 'format'), recs, goal, projected,
            goalReached: goal > 0 && reliableProjection(s) && projected >= goal };
 }
 
@@ -624,6 +664,7 @@ function renderSettings() {
   $('#pref-autodl').checked = !!pf.autoDl;
   $('#autodl-wrap').hidden = IS_IOS;
   renderCopies();
+  renderTemplates();
   $('#pref-backup').value = String(pf.backupEvery);
   $('#pref-ref').value = pf.refArrows;
   $('#pref-weekly').value = pf.weeklyGoal || '';
@@ -801,7 +842,7 @@ async function shareSummaryImage(s) {
     c.beginPath(); c.arc(cx + bias.mx * sc, cy + bias.my * sc, 17, 0, Math.PI * 2);
     c.fillStyle = '#dc2626'; c.fill(); c.strokeStyle = '#fff'; c.lineWidth = 5; c.stroke();
     c.fillStyle = '#fff'; c.font = `600 34px ${FONT}`; c.textAlign = 'center';
-    c.fillText(`${t('Tendance')} : ${t(bias.text)} · ${t('Dispersion moyenne')} ${bias.disp.toFixed(1)} cm`, W / 2, 1310);
+    c.fillText(`${t('Justesse')} : ${bias.dist.toFixed(1)} cm (${t(bias.text)}) · ${t('Groupement')} : ${bias.disp.toFixed(1)} cm`, W / 2, 1310);
   }
   const blob = await new Promise(res => cv.toBlob(res, 'image/png'));
   if (!blob) { toast("Impossible de créer l'image.", 'error'); return; }
@@ -896,9 +937,24 @@ function renderRegularity(data) {
   const third = Math.max(1, Math.floor(rows.length / 3));
   const avgOf = a => a.reduce((t, r) => t + r.avg, 0) / a.length;
   const delta = avgOf(rows.slice(-third)) - avgOf(rows.slice(0, third));
-  const trend = Math.abs(delta) < 0.15 ? 'Régulier du début à la fin de la séance.'
-    : delta < 0 ? `Baisse en fin de séance : ${Math.abs(delta).toFixed(1)} pt par flèche de moins que sur les premières volées.`
-    : `Progression en cours de séance : ${delta.toFixed(1)} pt par flèche de plus que sur les premières volées.`;
+  let trend;
+  if (rows.length < 6) trend = 'Trop peu de volées pour observer une évolution (6 minimum).';
+  else {
+    const fi = new Set(rows.slice(0, third).map(r => r.i)), la = new Set(rows.slice(-third).map(r => r.i));
+    const A = [], B = [];
+    data.forEach(sess => (sess.ends || []).forEach((end, i) => {
+      if (!end || !end.length) return;
+      const v = sumScore(end) / end.length;
+      if (fi.has(i)) A.push(v); else if (la.has(i)) B.push(v);
+    }));
+    const mean_ = x => x.reduce((p, q) => p + q, 0) / x.length;
+    const var_ = x => x.length > 1 ? x.reduce((p, q) => p + (q - mean_(x)) ** 2, 0) / (x.length - 1) : 0;
+    const d2 = mean_(B) - mean_(A), se = Math.sqrt(var_(A) / A.length + var_(B) / B.length);
+    const sg = (d2 >= 0 ? '+' : '−') + Math.abs(d2).toFixed(1);
+    trend = Math.abs(d2) < Math.max(0.15, 1.5 * se)
+      ? `Pas d'évolution nette entre le début et la fin de la séance (écart observé : ${sg} pt par flèche).`
+      : `Évolution observée : ${sg} pt par flèche sur le dernier tiers des volées par rapport au premier tiers. Cette tendance décrit les données, pas leur cause.`;
+  }
   card.innerHTML = `<h3>Régularité par volée</h3>
     <p class="muted" style="margin:2px 0 8px;font-size:13px">Score moyen par flèche pour chaque numéro de volée (séances filtrées).</p>
     ${lineChart(rows.map(r => r.avg), rows.map(r => `V${r.i + 1}`), 1)}
@@ -922,11 +978,15 @@ function biasOf(pts) {
   const text = [v, h].filter(Boolean).join('-') || 'Plein centre';
   const dx = Math.abs(mx * k).toFixed(1), dy = Math.abs(my * k).toFixed(1);
   const detail = `${dx} cm à ${mx < 0 ? 'gauche' : 'droite'} · ${dy} cm ${my < 0 ? 'trop haut' : 'trop bas'}`;
-  return { mx, my, disp, text, detail, k };
+  return { mx, my, disp, text, detail, k, dist: Math.hypot(mx, my) * k };
 }
 
-const biasMinis = b => `<div class="mini"><dt>Tendance</dt><dd>${b.text}</dd><div class="muted" style="font-size:12px">${b.detail}</div></div>
-      <div class="mini"><dt>Dispersion moyenne</dt><dd>${b.disp.toFixed(1)} cm</dd></div>`;
+/* Trois notions distinctes :
+   - Score : les points marqués.
+   - Justesse : écart entre le centre du groupement et le centre de la cible.
+   - Groupement : rayon moyen des impacts autour du centre du groupement. */
+const biasMinis = b => `<div class="mini"><dt>Justesse</dt><dd>${b.dist.toFixed(1)} cm</dd><div class="muted" style="font-size:12px">${b.text} · ${b.detail}</div></div>
+      <div class="mini"><dt>Groupement</dt><dd>${b.disp.toFixed(1)} cm</dd><div class="muted" style="font-size:12px">rayon moyen autour du centre du groupement</div></div>`;
 
 function drawMapPoints(svg, pts, bary, r) {
   const layer = svg.querySelector('[data-layer=impacts]');
@@ -941,7 +1001,12 @@ function openSummary(s, fresh = false) {
   const bias = pts.length ? biasOf(pts) : null;
   const info = analyze(s);
   let banner = '';
-  if (info.record) banner += `<div class="notice win">${fresh ? 'Nouveau record sur ce format' : 'Meilleure séance de ce format'} : ${st.total} pts (précédent : ${info.prevBest}).</div>`;
+  info.recs.forEach(r => {
+    const nv = fresh ? 'Nouveau record' : 'Meilleur résultat';
+    banner += r.type === 'format' ? `<div class="notice win">${nv} personnel sur ce format : ${r.v} pts (précédent : ${r.prev}).</div>`
+      : r.type === 'distance' ? `<div class="notice win">${nv} à ${esc(s.config.distance)} : moyenne ${r.v.toFixed(2)} par flèche (précédent : ${r.prev.toFixed(2)}).</div>`
+      : `<div class="notice win">${nv} sur ${r.n} flèches : ${r.v} pts (précédent : ${r.prev}).</div>`;
+  });
   const ref = refArrows();
   if (st.count && st.count !== ref) banner += `<div class="notice">Projection sur ${ref} flèches : <b>${info.projected} pts</b> (${st.count} flèches tirées).</div>`;
   const wgoal = getPrefs().weeklyGoal || 0;
@@ -973,7 +1038,7 @@ function openSummary(s, fresh = false) {
         ${biasMinis(bias)}
       </div>
       ${pts.length >= 6 && !s.noSight ? sightHtml(s.config.distance, bias.mx * bias.k, bias.my * bias.k) : ''}
-      <p class="muted" style="margin:0;font-size:13px">Point rouge : position moyenne de vos ${pts.length} impacts.</p>`
+      <p class="muted" style="margin:0;font-size:13px">Point rouge : centre du groupement (${pts.length} impacts).${pts.length >= ELLIPSE_MIN ? ' Ellipse : environ 2 flèches sur 3.' : ''} ${reliabNote(pts.length)}</p>`
     : `<p class="muted" style="margin:0">Aucun impact placé : utilisez le mode Cible pour obtenir la carte et la tendance de tir.</p>`}
     <div class="grid2">
       <button class="btn" data-action="share-image">${icon('upload')}Partager l'image</button>
@@ -989,6 +1054,7 @@ function openSummary(s, fresh = false) {
     const svg = $('#svg-summary');
     drawFace(svg, f);
     drawMapPoints(svg, pts, bias, 3);
+    if (pts.length >= ELLIPSE_MIN) svg.querySelector('[data-layer=impacts]').insertAdjacentHTML('afterbegin', ellipseMarkup(ellipseOf(pts)));
   }
   updateSights();
   const dlg = $('#dlg-summary');
@@ -996,9 +1062,88 @@ function openSummary(s, fresh = false) {
 }
 
 /* ---------- Nouvelle séance ---------- */
+/* Modèles de séance : les quatre formats de départ + ceux que l'archer enregistre. */
+const getTemplates = () => {
+  const t = store.get(KEYS.templates, null);
+  return Array.isArray(t) ? t : PRESETS.map((p, i) => ({ id: 'p' + (i + 1), name: p.label, distance: p.distance, target: p.target, ape: p.ape, ends: p.ends }));
+};
+const saveTemplates = list => store.set(KEYS.templates, list);
+const templateCfg = id => {
+  const t = getTemplates().find(x => x.id === id);
+  return t ? { distance: t.distance, target: t.target, ape: t.ape, ends: t.ends, sight: t.sight || store.get(KEYS.cfg, {}).sight || 'yes', goal: t.goal || 0, quick: !!t.quick } : null;
+};
 function renderPresets() {
-  $('#presets').innerHTML = PRESETS.map((p, i) => `<button class="preset" data-action="preset" data-i="${i}">${esc(p.label)}</button>`).join('');
+  const list = getTemplates();
+  $('#presets').innerHTML = list.length
+    ? list.map(t => `<button class="preset" data-action="tpl-start" data-id="${esc(t.id)}">${esc(t.name)}</button>`).join('')
+    : '<span class="muted" style="font-size:13px">Aucun modèle : réglez une séance puis « Enregistrer comme modèle ».</span>';
 }
+function tplSave() {
+  const name = $('#tpl-name').value.trim().slice(0, 30);
+  if (!name) { toast('Donnez un nom au modèle.'); return; }
+  const c = readSetup(), list = getTemplates();
+  const item = { id: 'm' + Date.now(), name, distance: c.distance, target: c.target, ape: c.ape, ends: c.ends, sight: c.sight, goal: c.goal, quick: c.quick };
+  const i = list.findIndex(x => x.name.toLowerCase() === name.toLowerCase());
+  if (i >= 0) { item.id = list[i].id; list[i] = item; } else list.push(item);
+  saveTemplates(list);
+  $('#tpl-name').value = '';
+  renderPresets(); renderTemplates();
+  toast('Modèle enregistré.');
+}
+function tplMove(id, dir) {
+  const list = getTemplates(), i = list.findIndex(x => x.id === id), k = i + dir;
+  if (i < 0 || k < 0 || k >= list.length) return;
+  [list[i], list[k]] = [list[k], list[i]];
+  saveTemplates(list); renderPresets(); renderTemplates();
+}
+function tplDel(id) { saveTemplates(getTemplates().filter(x => x.id !== id)); renderPresets(); renderTemplates(); toast('Modèle supprimé.'); }
+function tplReset() { store.del(KEYS.templates); renderPresets(); renderTemplates(); toast('Modèles de départ rétablis.'); }
+function renderTemplates() {
+  const box = $('#tpl-list');
+  if (!box) return;
+  const list = getTemplates();
+  box.innerHTML = list.length ? list.map(t => `<div class="rec"><div><b>${esc(t.name)}</b><div class="muted" style="font-size:13px">${esc(t.distance)} · ${esc(targetLabel(t.target))} · ${t.ends}×${t.ape} flèches${t.sight === 'no' ? ' · sans viseur' : ''}${t.goal ? ` · objectif ${t.goal}` : ''}${t.quick ? ' · saisie rapide' : ''}</div></div>
+      <div class="row"><button class="btn sm icon-only" data-action="tpl-up" data-id="${esc(t.id)}" aria-label="Monter">↑</button><button class="btn sm icon-only" data-action="tpl-down" data-id="${esc(t.id)}" aria-label="Descendre">↓</button><button class="btn sm icon-only danger" data-action="tpl-del" data-id="${esc(t.id)}" aria-label="Supprimer">${icon('trash')}</button></div></div>`).join('')
+    : '<p class="muted" style="margin:6px 0 0;font-size:13px">Aucun modèle pour l\'instant.</p>';
+}
+
+/* ---------- Saisie rapide : écran réduit pendant le tir, notes à la fin ---------- */
+function applyQuick() {
+  const s = app.session, on = !!(s && s.quick && !s.finished && !app.reorder);
+  $('#shoot-main').classList.toggle('quick', on);
+  document.body.classList.toggle('quick-on', on && app.tab === 'shoot');
+  const b = $('#btn-quick');
+  b.hidden = !s || !!s.finished;
+  b.textContent = s && s.quick ? 'Vue complète' : 'Saisie rapide';
+}
+function quickToggle() {
+  const s = app.session;
+  if (!s || s.finished) return;
+  if (s.quick) delete s.quick; else s.quick = true;
+  persist(); renderShoot();
+}
+let endNotesFeel = 0;
+function endNotesOpen(s) {
+  app.endNotesFor = s;
+  const n = s.notes || {};
+  $('#en-weather').value = n.weather || '';
+  $('#en-real').value = n.real || '';
+  $('#en-text').value = n.text || '';
+  endNotesFeel = n.feel || 0;
+  $$('#en-feel button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.v === endNotesFeel)));
+  $('#dlg-endnotes').showModal();
+}
+function endNotesClose(save) {
+  const s = app.endNotesFor;
+  app.endNotesFor = null;
+  if (s && save) {
+    s.notes = { weather: $('#en-weather').value, real: $('#en-real').value.trim(), feel: endNotesFeel, text: $('#en-text').value };
+    archive(s);
+  }
+  $('#dlg-endnotes').close();
+  if (s) openSummary(s, true);
+}
+
 function fillSetup(cfg) {
   const sel = $('#cfg-distance');
   const known = $$('option', sel).some(o => o.value === cfg.distance && o.value !== 'Custom');
@@ -1008,7 +1153,9 @@ function fillSetup(cfg) {
   $('#cfg-target').value = cfg.target;
   $('#cfg-ape').value = String(cfg.ape);
   $('#cfg-ends').value = cfg.ends;
-  if (cfg.sight) $('#cfg-sight').value = cfg.sight;   // les formats rapides gardent le choix du viseur
+  if (cfg.sight) $('#cfg-sight').value = cfg.sight;   // les modèles gardent le choix du viseur
+  if ('goal' in cfg) $('#cfg-goal').value = cfg.goal || '';
+  if ('quick' in cfg) $('#cfg-quick').checked = !!cfg.quick;
 }
 function readSetup() {
   let distance = $('#cfg-distance').value;
@@ -1018,7 +1165,7 @@ function readSetup() {
     distance = distance.replace(/\s+/g, '').slice(0, 12);
   }
   const ends = Math.max(1, Math.min(60, parseInt($('#cfg-ends').value, 10) || 10));
-  return { distance, target: $('#cfg-target').value, ape: parseInt($('#cfg-ape').value, 10), ends, sight: $('#cfg-sight').value };
+  return { distance, target: $('#cfg-target').value, ape: parseInt($('#cfg-ape').value, 10), ends, sight: $('#cfg-sight').value, goal: Math.max(0, parseInt($('#cfg-goal').value, 10) || 0), quick: $('#cfg-quick').checked };
 }
 function showSetup() {
   fillSetup(store.get(KEYS.cfg, { distance: '18m', target: '40', ape: 3, ends: 10, sight: 'yes' }));
@@ -1039,14 +1186,14 @@ function showSetup() {
   const dlg = $('#dlg-setup');
   if (!dlg.open) dlg.showModal();
 }
-async function startSession() {
-  const cfg = readSetup();
+async function startSession(cfgOverride) {
+  const cfg = cfgOverride || readSetup();
   const u = loadUnfinished();
   if (u) {
     const st = sessionStats(u);
     if (st.count > 0 && !(await askConfirm(`Une séance est en cours (${st.count} flèches). Démarrer une nouvelle séance l'abandonnera. Continuer ?`, 'Abandonner et démarrer'))) return;
   }
-  store.set(KEYS.cfg, cfg);
+  store.set(KEYS.cfg, Object.assign({}, cfg, { goal: 0 }));   // l'objectif ne se reporte pas d'une séance à l'autre
   const s = createSession(cfg);
   store.set(KEYS.unfinished, s);
   setSession(s);
@@ -1065,6 +1212,7 @@ function resumeSession() {
 function switchTab(tab) {
   endReorder();
   app.tab = tab;
+  applyQuick();
   ['shoot', 'stats', 'history', 'data'].forEach(t => { $('#tab-' + t).hidden = t !== tab; });
   $$('nav.tabs button').forEach(b => {
     if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
@@ -1197,10 +1345,10 @@ function renderEndsCard() {
     <div class="chips">${chips}</div>
     ${eps.length > 1 ? `<p style="margin:0 0 8px;font-weight:650">Écart maximal entre deux volées : ${spread.toFixed(1)} cm</p>` : ''}
     <div class="table-wrap"><table>
-      <thead><tr><th>Volée</th><th>Moy.</th><th>Décalage (cm)</th><th>Dispers. (cm)</th></tr></thead>
+      <thead><tr><th>Volée</th><th>Moy.</th><th>Justesse (cm)</th><th>Groupement (cm)</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
-    <p class="muted" style="margin:8px 0 0;font-size:13px">${all ? 'Moyenne de toutes les séances filtrées pour chaque numéro de volée. ' : ''}Décalage : position du point moyen par rapport au centre (← gauche, → droite, ↑ haut, ↓ bas).</p>`;
+    <p class="muted" style="margin:8px 0 0;font-size:13px">${all ? 'Moyenne de toutes les séances filtrées pour chaque numéro de volée. ' : ''}Justesse : position du point moyen par rapport au centre (← gauche, → droite, ↑ haut, ↓ bas).</p>`;
 
   const svg = $('#svg-ends');
   drawFace(svg, { tri: allTri, minRing: allTri ? 5 : 1, extent: allTri ? 60 : 100, diam: 40 });
@@ -1220,16 +1368,28 @@ function renderEndsCard() {
 
 /* Carte des impacts : densité (par défaut) ou points, sur une période au choix,
    avec point moyen et ellipse de regroupement. */
+/* Ellipse de covariance à 68 % : demi-axes = 1,51 × écart-type (covariance d'échantillon, n − 1) le long des axes principaux.
+   Elle ne s'affiche qu'à partir de ELLIPSE_MIN flèches placées et l'estimation est jugée fiable à partir de RELIABLE_N. */
+const ELLIPSE_K = 1.51, ELLIPSE_MIN = 9, RELIABLE_N = 30;
 function ellipseOf(pts) {
   const n = pts.length;
+  if (n < 3) return null;
   const mx = pts.reduce((t, p) => t + p.x, 0) / n, my = pts.reduce((t, p) => t + p.y, 0) / n;
   let sxx = 0, syy = 0, sxy = 0;
   pts.forEach(p => { const dx = p.x - mx, dy = p.y - my; sxx += dx * dx; syy += dy * dy; sxy += dx * dy; });
-  sxx /= n; syy /= n; sxy /= n;
+  sxx /= n - 1; syy /= n - 1; sxy /= n - 1;
   const tr = (sxx + syy) / 2, df = Math.sqrt(((sxx - syy) / 2) ** 2 + sxy * sxy);
-  return { mx, my, rx: Math.max(1, 1.5 * Math.sqrt(tr + df)), ry: Math.max(1, 1.5 * Math.sqrt(Math.max(tr - df, 0))),
+  return { mx, my, rx: Math.max(1, ELLIPSE_K * Math.sqrt(tr + df)), ry: Math.max(1, ELLIPSE_K * Math.sqrt(Math.max(tr - df, 0))),
            ang: 0.5 * Math.atan2(2 * sxy, sxx - syy) * 180 / Math.PI };
 }
+function ellipseMarkup(e) {
+  const tf = `rotate(${e.ang.toFixed(1)} ${e.mx.toFixed(1)} ${e.my.toFixed(1)})`;
+  const at = `cx="${e.mx.toFixed(1)}" cy="${e.my.toFixed(1)}" rx="${e.rx.toFixed(1)}" ry="${e.ry.toFixed(1)}" transform="${tf}" fill="none"`;
+  return `<ellipse ${at} stroke="#fff" stroke-width="2.4"/><ellipse ${at} stroke="#111" stroke-width="1" stroke-dasharray="3 2"/>`;
+}
+const reliabNote = n => n < ELLIPSE_MIN ? `Ellipse affichée à partir de ${ELLIPSE_MIN} flèches placées (${n} pour l'instant).`
+  : n < RELIABLE_N ? `Estimation provisoire (${n} flèches placées) : fiable à partir de ${RELIABLE_N}.`
+  : `Estimation fiable (${n} flèches placées).`;
 
 function renderImpactMap() {
   const box = $('#map-box');
@@ -1261,12 +1421,14 @@ function renderImpactMap() {
     <div class="grid2" style="margin-top:10px">
       ${biasMinis(bias)}
       <div class="mini"><dt>Impacts</dt><dd>${pts.length}</dd><div class="muted" style="font-size:12px">${count} séance${count > 1 ? 's' : ''}</div></div>
-      <div class="mini" id="m-group"><dt>Regroupement</dt><dd>–</dd></div>
+      <div class="mini" id="m-group"><dt>Ellipse</dt><dd>–</dd><div class="muted" style="font-size:12px">à partir de ${ELLIPSE_MIN} flèches</div></div>
     </div>
     ${sightBlock}
     <p class="muted" style="margin:10px 0 0;font-size:13px">${view === 'density'
       ? 'Plus une zone est foncée, plus vous y avez tiré.' : 'Chaque point est une flèche.'}
-      Point rouge : position moyenne. Ellipse : zone où tombent environ 2 flèches sur 3.</p>`;
+      Point rouge : centre du groupement. Ellipse : zone où tombent environ 2 flèches sur 3 (calculée dès ${ELLIPSE_MIN} flèches).</p>
+    <p class="muted" style="margin:6px 0 0;font-size:13px">Justesse : écart entre le centre du groupement et le centre de la cible. Groupement : rayon moyen des impacts autour du centre du groupement.</p>
+    <p style="margin:6px 0 0;font-weight:650">${reliabNote(pts.length)}</p>`;
 
   const svg = $('#svg-stats-map');
   drawFace(svg, f);
@@ -1281,13 +1443,11 @@ function renderImpactMap() {
   } else {
     h += pts.map(p => `<circle cx="${p.x}" cy="${p.y}" r="1.5" fill="#0b2f5e" stroke="#fff" stroke-width=".35" opacity=".8"/>`).join('');
   }
-  if (pts.length >= 3) {
+  if (pts.length >= ELLIPSE_MIN) {
     const e = ellipseOf(pts);
-    const tf = `rotate(${e.ang.toFixed(1)} ${e.mx.toFixed(1)} ${e.my.toFixed(1)})`;
-    h += `<ellipse cx="${e.mx.toFixed(1)}" cy="${e.my.toFixed(1)}" rx="${e.rx.toFixed(1)}" ry="${e.ry.toFixed(1)}" transform="${tf}" fill="none" stroke="#fff" stroke-width="2.4"/>` +
-      `<ellipse cx="${e.mx.toFixed(1)}" cy="${e.my.toFixed(1)}" rx="${e.rx.toFixed(1)}" ry="${e.ry.toFixed(1)}" transform="${tf}" fill="none" stroke="#111" stroke-width="1" stroke-dasharray="3 2"/>`;
+    h += ellipseMarkup(e);
     const w = (2 * Math.max(e.rx, e.ry) * bias.k).toFixed(0), hh = (2 * Math.min(e.rx, e.ry) * bias.k).toFixed(0);
-    $('#m-group').innerHTML = `<dt>Regroupement</dt><dd>${w} × ${hh} cm</dd><div class="muted" style="font-size:12px">grand × petit axe</div>`;
+    $('#m-group').innerHTML = `<dt>Ellipse</dt><dd>${w} × ${hh} cm</dd><div class="muted" style="font-size:12px">grand × petit axe</div>`;
   }
   h += `<circle cx="${bias.mx.toFixed(1)}" cy="${bias.my.toFixed(1)}" r="3.4" fill="#dc2626" stroke="#fff" stroke-width="1.5"/>`;
   svg.querySelector('[data-layer=impacts]').innerHTML = h;
@@ -1317,18 +1477,19 @@ function renderGoal(data) {
 
 function renderRecords(data) {
   const groups = {};
-  data.forEach(x => {
-    const st = sessionStats(x);
-    if (!st.complete) return;
-    const k = formatKey(x);
-    const g = groups[k] || (groups[k] = { s: x, n: 0, best: -1, date: x.date, planned: st.planned });
-    g.n++;
-    if (st.total > g.best) { g.best = st.total; g.date = x.date; }
-  });
-  const rows = Object.values(groups).sort((a, b) => b.n - a.n).slice(0, 8);
-  $('#records').innerHTML = rows.length
-    ? rows.map(g => `<div class="rec"><div><b>${esc(g.s.config.distance)} · ${esc(targetLabel(g.s.config.targetType))}</b><div class="muted" style="font-size:13px">${g.planned} flèches · ${g.n} séance${g.n > 1 ? 's' : ''} · ${fmtDate(g.date)}</div></div><div class="h-score">${g.best}</div></div>`).join('')
-    : '<p class="muted" style="margin:6px 0 0">Terminez une séance complète pour voir vos records.</p>';
+  data.forEach(x => { (groups[goalKey(x.config)] = groups[goalKey(x.config)] || []).push(x); });
+  const ref = refArrows();
+  const rows = Object.values(groups).map(list => ({ list, r: recordsOf(list) }))
+    .filter(g => Object.keys(g.r.formats).length || g.r.avg || Object.keys(g.r.series).length)
+    .sort((a, b) => b.list.length - a.list.length).slice(0, 6);
+  $('#records').innerHTML = rows.length ? rows.map(({ list, r }) => {
+    const c = list[0].config, lines = [];
+    Object.keys(r.formats).map(Number).sort((a, b) => b - a).forEach(n => lines.push(`Record du format · ${n} flèches : ${r.formats[n].v} (${fmtDate(r.formats[n].date)})`));
+    if (r.avg) lines.push(`Record par distance · moyenne ${r.avg.v.toFixed(2)} par flèche (≈ ${Math.round(r.avg.v * ref)} sur ${ref})`);
+    SERIES.forEach(n => { if (r.series[n]) lines.push(`Record sur ${n} flèches : ${r.series[n].v} (${fmtDate(r.series[n].date)})`); });
+    Object.keys(r.ends).map(Number).sort((a, b) => a - b).forEach(a => lines.push(`Meilleure volée de ${a} flèche${a > 1 ? 's' : ''} : ${r.ends[a].v}`));
+    return `<div class="rec"><div><b>${esc(c.distance)} · ${esc(targetLabel(c.targetType))}</b>${lines.map(l => `<div class="muted" style="font-size:13px">${l}</div>`).join('')}</div></div>`;
+  }).join('') : '<p class="muted" style="margin:6px 0 0">Terminez une séance complète pour voir vos records.</p>';
 }
 
 function renderVolume() {
@@ -1820,7 +1981,7 @@ async function shareApp() {
 
 /* ---------- Actions (délégation d'événements) ---------- */
 
-const APP_VERSION = 'v20 · 27 oct. 2026';
+const APP_VERSION = 'v21 · 29 oct. 2026';
 let deferredInstall = null;
 /* ---------- Ordre des fenêtres (pages Saisie et Stats) ---------- */
 const ORD_LABELS = {
@@ -1864,6 +2025,7 @@ function startReorder(tab) {
   app.reorder = tab;
   timerRender();                                  // le minuteur reste visible (estompé s'il est désactivé) pour pouvoir le placer
   document.body.classList.add('reorder');
+  applyQuick();
   $('#ord-top').hidden = false;
   ordBlocks(tab).forEach(el => {
     const bar = document.createElement('div');
@@ -1884,6 +2046,7 @@ function endReorder() {
   $$('.ord-bar').forEach(b => b.remove());
   $('#ord-top').hidden = true;
   document.body.classList.remove('reorder');
+  applyQuick();
 }
 
 const actions = {
@@ -1937,7 +2100,16 @@ const actions = {
     $('#resume-box').hidden = true;
   },
   close: d => $('#' + d.target).close(),
-  preset: d => { const p = PRESETS[+d.i]; fillSetup({ distance: p.distance, target: p.target, ape: p.ape, ends: p.ends }); },
+  'tpl-start': d => { const c = templateCfg(d.id); if (c) startSession(c); },
+  'tpl-save': () => tplSave(),
+  'tpl-up': d => tplMove(d.id, -1),
+  'tpl-down': d => tplMove(d.id, 1),
+  'tpl-del': d => tplDel(d.id),
+  'tpl-reset': () => tplReset(),
+  'quick-toggle': () => quickToggle(),
+  'en-feel': d => { endNotesFeel = endNotesFeel === +d.v ? 0 : +d.v; $$('#en-feel button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.v === endNotesFeel))); },
+  'endnotes-save': () => endNotesClose(true),
+  'endnotes-skip': () => endNotesClose(false),
   score: d => addArrow(d.v),
   undo: () => undo(),
   'clear-end': () => clearEnd(),
@@ -2036,6 +2208,7 @@ function bindEvents() {
   ['pf-name', 'pf-bow'].forEach(id => $('#' + id).addEventListener('input', saveProfile));
   $('#pf-type').addEventListener('change', saveProfile);
   $('#pref-wake').addEventListener('change', savePrefs);
+  $('#dlg-endnotes').addEventListener('close', () => { if (app.endNotesFor) endNotesClose(false); });
   $('#timer-dur').addEventListener('change', e => {
     if (timer.running) { timerFillDur(); return; }
     store.set(KEYS.prefs, Object.assign({}, getPrefs(), { timerEnd: +e.target.value }));
