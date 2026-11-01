@@ -589,7 +589,7 @@ function analyze(s) {
 }
 
 /* ---------- Écran toujours allumé ---------- */
-const getPrefs = () => Object.assign({ wake: true, backupEvery: 5, refArrows: 60, weeklyGoal: 0, lang: 'auto', theme: 'carnet', timer: true, timerEnd: 120, timerSound: true, autoDl: false }, store.get(KEYS.prefs, {}));
+const getPrefs = () => Object.assign({ wake: true, backupEvery: 5, refArrows: 60, weeklyGoal: 0, lang: 'auto', theme: 'carnet', timer: true, timerEnd: 120, timerSound: true, autoDl: false, loupe: true, loupeZoom: 3 }, store.get(KEYS.prefs, {}));
 const THEME_COLORS = { carnet: '#efe6cf', clair: '#ffffff', nuit: '#131d2f' };
 function applyTheme() {
   const th = getPrefs().theme;
@@ -661,6 +661,8 @@ function renderSettings() {
   $('#pref-timer').checked = !!pf.timer;
   $('#pref-timer-end').value = pf.timerEnd;
   $('#pref-timer-sound').checked = !!pf.timerSound;
+  $('#pref-loupe').checked = !!pf.loupe;
+  $('#pref-loupe-zoom').value = String(pf.loupeZoom);
   $('#pref-autodl').checked = !!pf.autoDl;
   $('#autodl-wrap').hidden = IS_IOS;
   renderCopies();
@@ -682,6 +684,8 @@ function savePrefs() {
     timer: $('#pref-timer').checked,
     timerEnd: Math.max(10, Math.min(900, parseInt($('#pref-timer-end').value, 10) || 120)),
     timerSound: $('#pref-timer-sound').checked,
+    loupe: $('#pref-loupe').checked,
+    loupeZoom: Math.max(2, Math.min(5, parseInt($('#pref-loupe-zoom').value, 10) || 3)),
     autoDl: $('#pref-autodl').checked,
     backupEvery: parseInt($('#pref-backup').value, 10),
     refArrows: Math.max(6, Math.min(144, parseInt($('#pref-ref').value, 10) || 60)),
@@ -1979,9 +1983,48 @@ async function shareApp() {
   catch (e) { toast(url); }
 }
 
+/* ---------- Loupe sur la cible (pendant la visée au doigt) ---------- */
+const LOUPE_D = 124;                      // diamètre de la bulle, en pixels
+let loupeEl = null, loupeSvg = null, loupeZone = null, loupeOn = false;
+function loupeInit() {
+  loupeEl = document.createElement('div');
+  loupeEl.id = 'loupe'; loupeEl.hidden = true; loupeEl.setAttribute('aria-hidden', 'true');
+  loupeEl.innerHTML = '<svg></svg><i class="lp-h"></i><i class="lp-v"></i><b class="lp-z"></b>';
+  document.body.appendChild(loupeEl);
+  loupeSvg = loupeEl.querySelector('svg');
+  loupeZone = loupeEl.querySelector('.lp-z');
+}
+function loupeStart() {
+  if (!getPrefs().loupe || !app.session) return;
+  const src = $('#svg-target');
+  // copie de la cible et des impacts déjà posés (sans le viseur)
+  loupeSvg.setAttribute('viewBox', src.getAttribute('viewBox'));
+  loupeSvg.innerHTML = [...src.children].filter(n => n.getAttribute('data-layer') !== 'extra').map(n => n.outerHTML).join('');
+  loupeOn = true;
+}
+function loupeMove(pt) {
+  if (!loupeOn || !app.session) return;
+  const src = $('#svg-target'), ctm = src.getScreenCTM();
+  if (!ctm) return;
+  const half = LOUPE_D / 2 / (getPrefs().loupeZoom * ctm.a);          // demi-fenêtre en unités de la cible
+  loupeSvg.setAttribute('viewBox', `${(pt.x - half).toFixed(2)} ${(pt.y - half).toFixed(2)} ${(2 * half).toFixed(2)} ${(2 * half).toFixed(2)}`);
+  const q = src.createSVGPoint(); q.x = pt.x; q.y = pt.y;
+  const s = q.matrixTransform(ctm), R = LOUPE_D / 2, W = window.innerWidth, H = window.innerHeight;
+  let cx = s.x, cy = s.y - R - 26;                                      // au-dessus du viseur
+  if (cy - R < 6) { cx = s.x + (s.x < W / 2 ? 1 : -1) * (R + 54); cy = s.y; }   // trop haut : sur le côté
+  cx = Math.max(R + 6, Math.min(W - R - 6, cx));
+  cy = Math.max(R + 6, Math.min(H - R - 6, cy));
+  loupeEl.style.transform = `translate(${(cx - R).toFixed(0)}px, ${(cy - R).toFixed(0)}px)`;
+  const z = zoneAt(pt.x, pt.y, face(app.session.config));
+  loupeZone.textContent = z;
+  loupeZone.className = 'lp-z ' + zoneClass(z);
+  loupeEl.hidden = false;
+}
+function loupeStop() { loupeOn = false; if (loupeEl) loupeEl.hidden = true; }
+
 /* ---------- Actions (délégation d'événements) ---------- */
 
-const APP_VERSION = 'v21 · 29 oct. 2026';
+const APP_VERSION = 'v22 · 30 oct. 2026';
 let deferredInstall = null;
 /* ---------- Ordre des fenêtres (pages Saisie et Stats) ---------- */
 const ORD_LABELS = {
@@ -2146,6 +2189,11 @@ const actions = {
 };
 
 function bindEvents() {
+  loupeInit();
+  // Pas de sélection de texte ni de menu d'appui long (sauf dans les champs de saisie)
+  const editable = n => !!(n && n.closest && n.closest('input,textarea,[contenteditable]'));
+  document.addEventListener('selectstart', e => { if (!editable(e.target.nodeType === 3 ? e.target.parentElement : e.target)) e.preventDefault(); });
+  document.addEventListener('contextmenu', e => { if (!editable(e.target)) e.preventDefault(); });
   document.addEventListener('click', e => {
     const b = e.target.closest('[data-action]');
     if (!b || b.disabled) return;
@@ -2156,12 +2204,13 @@ function bindEvents() {
   // Cible : toucher pour placer, glisser pour ajuster, relâcher pour valider
   const svg = $('#svg-target');
   let dragging = false;
-  const place = e => { const p = pointerToSvg(e); setPending(p.x, p.y, p.touch ? { x: p.fx, y: p.fy } : null); };
+  const place = e => { const p = pointerToSvg(e); setPending(p.x, p.y, p.touch ? { x: p.fx, y: p.fy } : null); loupeMove(p); };
   svg.addEventListener('pointerdown', e => {
     if (app.mode !== 'target' || !app.session || app.session.finished) return;
     e.preventDefault();
     dragging = true;
     try { svg.setPointerCapture(e.pointerId); } catch (err) {}
+    loupeStart();
     place(e);
   });
   svg.addEventListener('pointermove', e => { if (dragging) place(e); });
@@ -2169,10 +2218,12 @@ function bindEvents() {
   svg.addEventListener('pointerup', () => {
     if (!dragging) return;
     dragging = false;
+    loupeStop();
     confirmPending();
   });
   svg.addEventListener('pointercancel', () => {
     dragging = false;
+    loupeStop();
     app.pending = null;
     renderPending();
   });
@@ -2214,7 +2265,7 @@ function bindEvents() {
     store.set(KEYS.prefs, Object.assign({}, getPrefs(), { timerEnd: +e.target.value }));
     timerReset();
   });
-  ['pref-timer', 'pref-timer-end', 'pref-timer-sound', 'pref-autodl'].forEach(id => $('#' + id).addEventListener('change', savePrefs));
+  ['pref-timer', 'pref-timer-end', 'pref-timer-sound', 'pref-autodl', 'pref-loupe', 'pref-loupe-zoom'].forEach(id => $('#' + id).addEventListener('change', savePrefs));
   $('#pref-backup').addEventListener('change', savePrefs);
   $('#pref-ref').addEventListener('change', savePrefs);
   $('#pref-weekly').addEventListener('change', savePrefs);

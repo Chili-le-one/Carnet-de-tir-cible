@@ -70,6 +70,7 @@
     "Aucun modèle : réglez une séance puis « Enregistrer comme modèle ».": "No template: set up a session then “Save as template”.",
     "Notes de fin de séance": "End-of-session notes", "Conditions et remarques à noter maintenant (facultatif).": "Conditions and remarks to note now (optional).",
     "Passer": "Skip", "Enregistrer": "Save",
+    "Loupe sur la cible (zoom pendant la visée)": "Target magnifier (zoom while aiming)", "Zoom de la loupe": "Magnifier zoom",
     "Abandonner": "Abandon", "Abandonner et démarrer": "Abandon and start", "Ajouter": "Add",
     "Android (Chrome) : menu ⋮ puis « Installer l'application ». iPhone (Safari) : Partager puis « Sur l'écran d'accueil ».": "Android (Chrome): ⋮ menu, then “Install app”. iPhone (Safari): Share, then “Add to Home Screen”.",
     "Android : dans Chrome, touchez le menu ⋮ puis « Installer l'application » (ou « Ajouter à l'écran d'accueil »).": "Android: in Chrome, tap the ⋮ menu then “Install app” (or “Add to Home screen”).",

@@ -247,16 +247,63 @@ body.reorder{padding-bottom:calc(var(--nav-h) + 80px + env(safe-area-inset-botto
 .cal-d i{position:absolute;top:1px;right:4px;font-size:11px;font-style:normal;color:var(--red)}
 .cal-d.d3 i{color:var(--gold)}
 .cal-sel,.cal-up{margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
-/* Saisie rapide : seulement le nécessaire, sans défilement */
-body.quick-on .top{display:none}
-body.quick-on main{padding-top:10px}
-#shoot-main.quick{min-height:calc(100dvh - var(--nav-h) - env(safe-area-inset-bottom) - 28px)}
+/* Saisie rapide : tout tient dans la hauteur de l'écran (téléphone en portrait) */
+body.quick-on .top,body.quick-on #backup-banner{display:none}
+body.quick-on main{padding-top:calc(8px + env(safe-area-inset-top))}
+#shoot-main.quick{height:calc(100dvh - var(--nav-h) - env(safe-area-inset-bottom) - env(safe-area-inset-top) - 16px);gap:8px;overflow-y:auto;overscroll-behavior:contain}
+#shoot-main.quick>*{margin:0;flex:none}
+#shoot-main.quick .card{padding:8px 10px}
 #shoot-main.quick [data-ord=notes],#shoot-main.quick [data-ord=feuille]{display:none}
-#shoot-main.quick [data-ord=statut] .minis .mini:not(:first-child),#shoot-main.quick [data-ord=statut] #s-proj{display:none}
+/* résumé : score, volée et boutons sur une seule ligne */
+#shoot-main.quick [data-ord=statut]{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
+#shoot-main.quick [data-ord=statut]>.row.between{display:contents}
+#shoot-main.quick [data-ord=statut]>.row.between>.row:first-child,
+#shoot-main.quick [data-ord=statut] #s-proj,
+#shoot-main.quick [data-ord=statut] .progress,
+#shoot-main.quick [data-ord=statut] .minis .mini:not(:first-child){display:none}
+#shoot-main.quick [data-ord=statut] .total{order:1;margin:0}
+#shoot-main.quick [data-ord=statut] .minis{order:2;margin:0;display:block}
+#shoot-main.quick [data-ord=statut]>.row.between>.row:last-child{order:3;margin-left:auto}
+#shoot-main.quick .big{font-size:clamp(28px,5.4dvh,46px)}
+#shoot-main.quick .mini{padding:2px 8px}
+/* volée en cours : titre, total et annulation sur une ligne, cases dessous */
+#shoot-main.quick [data-ord=volee]{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px}
+#shoot-main.quick [data-ord=volee]>.row.between{display:contents}
+#shoot-main.quick [data-ord=volee] h2{order:1;font-size:15px}
+#shoot-main.quick [data-ord=volee]>.row.between>span{order:2}
+#shoot-main.quick [data-ord=volee]>.row:last-child{order:3;margin-left:auto}
+#shoot-main.quick [data-ord=volee] .slots{order:4;flex:1 1 100%;margin:0;padding:6px;min-height:0}
+#shoot-main.quick .slot{width:clamp(30px,5dvh,42px);height:clamp(30px,5dvh,42px);font-size:15px}
 #shoot-main.quick [data-action=clear-end],#shoot-main.quick .timer-opts{display:none}
-#shoot-main.quick .slots{margin:6px 0}
-#shoot-main.quick [data-ord=saisie]{flex:1;display:flex;flex-direction:column}
-#shoot-main.quick [data-ord=saisie] .keypad{flex:1;grid-auto-rows:1fr}
-#shoot-main.quick #svg-target{max-height:40dvh}
+#shoot-main.quick .timer{padding:6px 10px;gap:8px}
+#shoot-main.quick .timer-time{font-size:clamp(26px,5dvh,40px)}
+#shoot-main.quick .timer .btn{min-height:40px}
+#shoot-main.quick .seg{padding:3px}
+#shoot-main.quick .seg button{min-height:40px}
+/* clavier et cible : tout l'espace restant, qui s'adapte à la hauteur */
+#shoot-main.quick [data-ord=saisie]{flex:1 1 0;min-height:0;display:flex;flex-direction:column}
+#shoot-main.quick [data-ord=saisie] .keypad{flex:1;min-height:0;gap:6px;grid-template-rows:repeat(3,minmax(40px,1fr))}
+#shoot-main.quick .key{min-height:0;font-size:clamp(18px,3.8dvh,30px)}
+#shoot-main.quick .key small{font-size:10px;margin-top:0}
+#shoot-main.quick #panel-target{flex:1;min-height:0;display:flex;flex-direction:column;padding:8px}
+#shoot-main.quick .pendingbar{margin-bottom:6px;min-height:0;gap:8px}
+#shoot-main.quick #pending-info{font-size:13px}
+#shoot-main.quick .pendingbar .btn{min-height:38px}
+#shoot-main.quick .target-wrap{flex:1;min-height:0;max-width:none;width:100%;margin:0;position:relative}
+#shoot-main.quick #svg-target{position:absolute;top:0;left:0;width:100%;height:100%}
+#shoot-main.quick #panel-target>.row{margin-top:6px!important}
+
+/* Loupe sur la cible */
+#loupe{position:fixed;left:0;top:0;width:124px;height:124px;border-radius:50%;overflow:hidden;z-index:60;pointer-events:none;border:3px solid var(--ink);background:var(--card);box-shadow:0 6px 18px rgba(0,0,0,.35)}
+#loupe svg{display:block;width:100%;height:100%}
+#loupe .lp-h,#loupe .lp-v{position:absolute;left:50%;top:50%;background:#111;box-shadow:0 0 0 1px #fff;transform:translate(-50%,-50%)}
+#loupe .lp-h{width:26px;height:1px}
+#loupe .lp-v{width:1px;height:26px}
+#loupe .lp-z{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);min-width:30px;padding:1px 8px;border-radius:9px;font-size:13px;text-align:center}
+
+/* Pas de sélection de texte accidentelle (sauf dans les champs de saisie) */
+html{-webkit-touch-callout:none}
+body{-webkit-user-select:none;user-select:none}
+input,textarea{-webkit-user-select:text;user-select:text}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 @media (max-width:360px){.big{font-size:46px}.key{font-size:22px}.minis{grid-template-columns:1fr 1fr}}
