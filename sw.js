@@ -2,8 +2,8 @@
    La page est toujours rechargée depuis le réseau quand il y en a un (les mises à jour
    apparaissent donc dès l'ouverture suivante) ; le cache ne sert qu'en secours hors ligne.
    Changez le numéro de version ci-dessous à chaque mise à jour de l'application. */
-const CACHE = 'carnet-tir-cible-v22';
-const ASSETS = ['./', './index.html', './manifest.webmanifest', './i18n.js', './themes.css', './style.css', './app.js', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
+const CACHE = 'carnet-tir-cible-v23';
+const ASSETS = ['./', './index.html', './manifest.webmanifest', './i18n.js', './themes.css', './style.css', './js/core.js', './js/saisie.js', './js/outils.js', './js/bilan.js', './js/stats.js', './js/cartes.js', './js/historique.js', './js/sauvegarde.js', './js/reglages.js', './js/ordre.js', './js/actions.js', './js/events.js', './js/main.js', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => Promise.all(ASSETS.map(f => c.add(f).catch(() => {})))).then(() => self.skipWaiting()));

@@ -8,6 +8,15 @@ Les dates sont celles de la mise à disposition des fichiers.
 
 ---
 
+## v23 — 3 novembre 2026
+*Fichiers modifiés : `index.html`, `sw.js`, tout le dossier `js/` (nouveau). `app.js` est supprimé.*
+
+### Modifications
+- **Découpage du code** : `app.js` est remplacé par 13 fichiers de 2 à 21 Ko dans le dossier `js/`, un par rôle (noyau, saisie, outils, bilan, stats, cartes, historique, sauvegarde, réglages, ordre, actions, événements, démarrage). Aucun changement visible : les mises à jour futures ne relisent et ne renvoient que les fichiers concernés.
+- Nouveau guide `STRUCTURE.md` : où se trouve chaque fonction.
+
+---
+
 ## v22 — 30 octobre 2026
 *Fichiers modifiés : `index.html`, `app.js`, `style.css`, `i18n.js`, `sw.js`.*
 
