@@ -8,6 +8,7 @@ function init() {
   app.mode = store.get(KEYS.mode, 'keys') === 'target' ? 'target' : 'keys';
   hydrateIcons();
   renderPresets();
+  renderSheetSelect();
   bindEvents();
   applyOrder();
   applyTheme();

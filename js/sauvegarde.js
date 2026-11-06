@@ -55,13 +55,13 @@ function exportCSV() {
   const EN = window.__LANG === 'en', SEP = EN ? ',' : ';';
   const num = v => v == null ? '' : (EN ? String(v) : String(v).replace('.', ','));
   const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""').replace(/\s*\n\s*/g, ' ') + '"';
-  let csv = EN ? 'Session,Date,Archer,Bow,Bow type,Distance,Actual distance,Target face,Conditions,Feel,Notes,End,Arrow,Score,Zone,X (cm),Y (cm)\n' : 'Séance;Date;Archer;Arc;Type d\'arc;Distance;Distance réelle;Blason;Conditions;Sensations;Notes;Volée;Flèche;Score;Zone;X (cm);Y (cm)\n';
+  let csv = EN ? 'Session,Date,Archer,Bow,Bow type,Distance,Actual distance,Target face,Conditions,Feel,Notes,End,Arrow,Score,Zone,X (cm),Y (cm),Arrow no.\n' : 'Séance;Date;Archer;Arc;Type d\'arc;Distance;Distance réelle;Blason;Conditions;Sensations;Notes;Volée;Flèche;Score;Zone;X (cm);Y (cm);N° de flèche\n';
   app.sessions.forEach(s => {
     const k = cmPerUnit(s.config);
     s.ends.forEach((end, e) => (end || []).forEach((a, i) => {
       const n = s.notes || {};
       csv += [s.id, s.date, q(s.archer), q(s.bow), q(s.bowType), s.config.distance, q(n.real), s.config.targetType, q(n.weather), n.feel || '', q(n.text), e + 1, i + 1, a.scoreVal, a.valStr,
-        num(a.x == null ? null : +(a.x * k).toFixed(1)), num(a.y == null ? null : +(a.y * k).toFixed(1))].join(SEP) + '\n';
+        num(a.x == null ? null : +(a.x * k).toFixed(1)), num(a.y == null ? null : +(a.y * k).toFixed(1)), a.n || ''].join(SEP) + '\n';
     }));
   });
   download(`carnet_tir_cible_${today()}.csv`, '\uFEFF' + csv, 'text/csv;charset=utf-8');

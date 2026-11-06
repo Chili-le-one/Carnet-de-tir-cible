@@ -24,6 +24,7 @@ function renderSettings() {
   $('#pref-lang').value = pf.lang;
   $('#pref-theme').value = pf.theme;
   renderGear();
+  renderSheets();
   renderBackupBanner();
 }
 function saveProfile() {

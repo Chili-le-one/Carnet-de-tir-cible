@@ -2,6 +2,36 @@
    Script classique : partage ses variables avec les autres fichiers de js/ (voir l'ordre dans index.html). */
 'use strict';
 
+/* ---------- Numéro de flèche ---------- */
+/* Nombre de flèches numérotées : celui de la fiche de réglage, sinon 6 (ou plus si la volée est plus longue). */
+const quiverSize = s => Math.max(1, Math.min(24, +(s.setup && s.setup.quiver) || Math.max(6, s.config.arrowsPerEnd)));
+/* Numéro proposé pour la prochaine flèche : il avance tout seul (1, 2, 3…, puis retour à 1) et se corrige d'un toucher. */
+function currentNum(s) {
+  if (app.numFor !== s.id) {
+    let last = 0;
+    [...(s.trial || []), ...s.ends].forEach(e => (e || []).forEach(a => { if (a.n) last = a.n; }));
+    app.nextNum = last % quiverSize(s) + 1;
+    app.numFor = s.id;
+  }
+  return Math.min(app.nextNum, quiverSize(s));
+}
+function pickNum(n) {
+  const s = app.session;
+  if (!s || !s.config.trackNums) return;
+  app.nextNum = Math.max(1, Math.min(quiverSize(s), n));
+  app.numFor = s.id;
+  renderNumRow();
+}
+function renderNumRow() {
+  const s = app.session, row = $('#num-row');
+  const on = !!(s && s.config.trackNums && !s.finished);
+  row.hidden = !on;
+  if (!on) return;
+  const cur = currentNum(s);
+  $('#num-btns').innerHTML = Array.from({ length: quiverSize(s) }, (_, i) =>
+    `<button class="numb${i + 1 === cur ? ' on' : ''}" data-action="num-pick" data-n="${i + 1}" aria-pressed="${i + 1 === cur}" aria-label="Flèche numéro ${i + 1}">${i + 1}</button>`).join('');
+}
+
 /* ---------- Saisie des flèches ---------- */
 function addArrow(v, x = null, y = null) {
   const s = app.session;
@@ -9,22 +39,25 @@ function addArrow(v, x = null, y = null) {
   const f = face(s.config);
   if (f.tri && v !== 'M' && rank(v) < f.minRing) return;
   const idx = s.currentEndIndex;
-  const end = s.ends[idx] || (s.ends[idx] = []);
+  const end = ensureEnd(s, idx);
   const max = s.config.arrowsPerEnd;
   if (end.length >= max) return;
 
-  end.push({ valStr: v, scoreVal: scoreOf(v), x, y });
+  const a = { valStr: v, scoreVal: scoreOf(v), x, y };
+  if (s.config.trackNums) { a.n = currentNum(s); app.nextNum = a.n % quiverSize(s) + 1; }
+  end.push(a);
   app.pending = null;
   buzz(12);
 
   if (end.length >= max) {
-    if (idx >= s.config.totalEnds - 1) {
+    if (idx >= allEnds(s) - 1) {
       finishSession(false);
       return;
     }
     s.currentEndIndex++;
     buzz([20, 40, 20]);
-    toast(`Volée ${idx + 1} : ${sumScore(end)} points`);
+    if (isTrialIdx(s, idx)) toast(`${endLabel(s, idx)} : ${sumScore(end)} points (non comptés)${idx === trialN(s) - 1 ? ' · la séance commence' : ''}`);
+    else toast(`${endLabel(s, idx)} : ${sumScore(end)} points`);
   }
   persist();
   renderShoot();
@@ -34,13 +67,15 @@ async function undo() {
   const s = app.session;
   if (!s) return;
   if (s.finished && !(await reopen())) return;
-  let end = s.ends[s.currentEndIndex];
+  let end = getEnd(s, s.currentEndIndex);
   if (!end || !end.length) {
     if (s.currentEndIndex === 0) { toast('Aucune flèche à annuler.'); return; }
     s.currentEndIndex--;
-    end = s.ends[s.currentEndIndex];
+    end = getEnd(s, s.currentEndIndex);
   }
-  end.pop();
+  if (!end || !end.length) { persist(); renderShoot(); return; }
+  const gone = end.pop();
+  if (gone && gone.n) { app.nextNum = gone.n; app.numFor = s.id; }   // le numéro annulé redevient le prochain
   app.pending = null;
   persist();
   renderShoot();
@@ -49,10 +84,12 @@ async function undo() {
 async function clearEnd() {
   const s = app.session;
   if (!s || s.finished) return;
-  const end = s.ends[s.currentEndIndex];
+  const end = getEnd(s, s.currentEndIndex);
   if (!end || !end.length) return;
-  if (end.length > 1 && !(await askConfirm('Effacer toutes les flèches de cette volée ?', 'Effacer'))) return;
-  s.ends[s.currentEndIndex] = [];
+  if (end.length > 1 && !(await askConfirm(isTrialIdx(s, s.currentEndIndex) ? "Effacer toutes les flèches de cet essai ?" : 'Effacer toutes les flèches de cette volée ?', 'Effacer'))) return;
+  const first = end.find(a => a.n);
+  if (first) { app.nextNum = first.n; app.numFor = s.id; }
+  setEnd(s, s.currentEndIndex, []);
   app.pending = null;
   persist();
   renderShoot();
@@ -99,7 +136,8 @@ async function reopen() {
   s.finished = false;
   delete s.endedEarly;
   let last = 0;
-  s.ends.forEach((e, i) => { if (e && e.length) last = i; });
+  (s.trial || []).forEach((e, i) => { if (e && e.length) last = Math.max(last, i); });
+  s.ends.forEach((e, i) => { if (e && e.length) last = Math.max(last, i + trialN(s)); });
   s.currentEndIndex = last;
   persist();
   renderShoot();
@@ -120,8 +158,8 @@ function confirmPending() {
   renderPending();
 }
 function lastArrowOf(s) {
-  for (let i = Math.min(s.currentEndIndex, s.ends.length - 1); i >= 0; i--) {
-    const e = s.ends[i];
+  for (let i = Math.min(s.currentEndIndex, allEnds(s) - 1); i >= 0; i--) {
+    const e = getEnd(s, i);
     if (e && e.length) return e[e.length - 1];
   }
   return null;
@@ -148,7 +186,7 @@ function renderShoot() {
   if (!s) { updateWakeLock(); timerRender(); applyQuick(); return; }
 
   const c = s.config, st = sessionStats(s), f = face(c);
-  const idx = Math.min(s.currentEndIndex, c.totalEnds - 1);
+  const T = trialN(s), idx = Math.min(s.currentEndIndex, allEnds(s) - 1), inTrial = idx < T;
 
   $('#chip-dist').textContent = c.distance;
   $('#chip-target').textContent = targetLabel(c.targetType);
@@ -158,25 +196,28 @@ function renderShoot() {
   const refN = refArrows(), pj = $('#s-proj');
   pj.hidden = !(st.count && st.count !== refN);
   if (!pj.hidden) pj.textContent = `Projection sur ${refN} flèches : ${projectedScore(s)} pts`;
-  $('#s-end').textContent = s.finished ? 'Fin' : `${idx + 1}/${c.totalEnds}`;
+  $('#s-end').textContent = s.finished ? 'Fin' : inTrial ? `Essai ${idx + 1}/${T}` : `${idx - T + 1}/${c.totalEnds}`;
   $('#s-avg').textContent = st.count ? st.avg.toFixed(1) : '–';
   $('#s-tens').textContent = st.tens;
   $('#s-x').textContent = st.xs;
   $('#s-bar').style.width = Math.min(100, st.count / st.planned * 100) + '%';
 
   // Volée en cours
-  const cur = s.ends[idx] || [];
+  const cur = getEnd(s, idx) || [];
   $('#end-card').hidden = !!s.finished;
-  $('#end-no').textContent = idx + 1;
+  $('#end-lbl').textContent = inTrial ? 'Essai' : 'Volée';
+  $('#end-no').textContent = inTrial ? idx + 1 : idx - T + 1;
+  $('#end-trial').hidden = !inTrial;
   $('#end-sum').textContent = sumScore(cur);
   let slots = '';
   for (let i = 0; i < c.arrowsPerEnd; i++) {
     const a = cur[i];
     slots += a
-      ? `<button class="slot ${zoneClass(a.valStr)}" data-action="edit-arrow" data-e="${idx}" data-i="${i}" aria-label="Modifier la flèche ${i + 1}">${a.valStr}</button>`
+      ? `<button class="slot ${zoneClass(a.valStr)}" data-action="edit-arrow" data-e="${idx}" data-i="${i}" aria-label="Modifier la flèche ${i + 1}">${a.valStr}${a.n ? `<i class="sn">${a.n}</i>` : ''}</button>`
       : `<span class="slot empty${i === cur.length ? ' next' : ''}">${i + 1}</span>`;
   }
   $('#slots').innerHTML = slots;
+  renderNumRow();
 
   // Panneaux de saisie
   const done = !!s.finished;
@@ -195,13 +236,18 @@ function renderShoot() {
 
   // Feuille de marque
   let html = '', cumul = 0;
+  const chipsOf = (end, g) => end.map((a, i) => ({ a, i })).sort((p, q) => rank(q.a.valStr) - rank(p.a.valStr))
+    .map(({ a, i }) => `<button class="sc ${zoneClass(a.valStr)}" data-action="edit-arrow" data-e="${g}" data-i="${i}" aria-label="Modifier la flèche ${i + 1} de ${endLabel(s, g).toLowerCase()}">${a.valStr}</button>`).join('');
+  for (let g = 0; g < T; g++) {   // volées d'essai : grisées, jamais dans le cumul
+    const end = getEnd(s, g) || [], isCur = !s.finished && g === idx;
+    html += `<tr class="trial${isCur ? ' cur' : ''}"${isCur ? ' aria-current="true"' : ''}><td title="Essai ${g + 1}">E${g + 1}</td><td>${chipsOf(end, g) || '<span class="muted">–</span>'}</td><td>${end.length ? sumScore(end) : ''}</td><td>${end.length ? '–' : ''}</td></tr>`;
+  }
   for (let e = 0; e < c.totalEnds; e++) {
     const end = s.ends[e] || [];
     const sum = sumScore(end);
     cumul += sum;
-    const chips = end.map((a, i) => ({ a, i })).sort((p, q) => rank(q.a.valStr) - rank(p.a.valStr))
-      .map(({ a, i }) => `<button class="sc ${zoneClass(a.valStr)}" data-action="edit-arrow" data-e="${e}" data-i="${i}" aria-label="Modifier la flèche ${i + 1} de la volée ${e + 1}">${a.valStr}</button>`).join('');
-    const isCur = !s.finished && e === idx;
+    const chips = chipsOf(end, e + T);
+    const isCur = !s.finished && e + T === idx;
     html += `<tr class="${isCur ? 'cur' : ''}"${isCur ? ' aria-current="true"' : ''}><td>${e + 1}</td><td>${chips || '<span class="muted">–</span>'}</td><td>${end.length ? sum : ''}</td><td>${end.length ? cumul : ''}</td></tr>`;
   }
   $('#scorecard').innerHTML = html;
@@ -222,12 +268,14 @@ function renderImpactLayer() {
   const layer = $('#svg-target [data-layer=impacts]');
   if (!s || !layer) return;
   let h = '';
-  s.ends.forEach((end, i) => (end || []).forEach((a, j) => {
-    if (a.x == null || a.y == null) return;
-    h += (i === s.currentEndIndex && !s.finished)
-      ? dot(a.x, a.y, { n: j + 1 })
-      : dot(a.x, a.y, { r: 2.2, fill: '#111', stroke: '#fff', op: .45 });
-  }));
+  for (let g = 0; g < allEnds(s); g++) {
+    const cur = g === s.currentEndIndex && !s.finished;
+    if (isTrialIdx(s, g) && !cur) continue;      // les essais passés n'encombrent pas la cible
+    (getEnd(s, g) || []).forEach((a, j) => {
+      if (a.x == null || a.y == null) return;
+      h += cur ? dot(a.x, a.y, { n: j + 1 }) : dot(a.x, a.y, { r: 2.2, fill: '#111', stroke: '#fff', op: .45 });
+    });
+  }
   layer.innerHTML = h;
 }
 
@@ -236,7 +284,7 @@ function renderPending() {
   const info = $('#pending-info'), btn = $('#btn-undo-target');
   if (!layer || !app.session) return;
   const sess = app.session, p = app.pending;
-  btn.disabled = !!sess.finished || sessionStats(sess).count === 0;
+  btn.disabled = !!sess.finished || arrowCount(sess) === 0;
   if (!p) {
     layer.innerHTML = '';
     const last = lastArrowOf(sess);
@@ -249,7 +297,8 @@ function renderPending() {
     }
     return;
   }
-  const z = zoneAt(p.x, p.y, face(sess.config));
+  const fc = face(sess.config), z = zoneAt(p.x, p.y, fc);
+  const onLine = fc.arrowU > 0 && z !== zoneAt(p.x, p.y, Object.assign({}, fc, { arrowU: 0 }));
   const x = p.x.toFixed(1), y = p.y.toFixed(1);
   const guide = p.finger
     ? `<line x1="${x}" y1="${y}" x2="${p.finger.x.toFixed(1)}" y2="${p.finger.y.toFixed(1)}" stroke="#111" stroke-width=".7" stroke-dasharray="1.5 1.5" opacity=".6"/>` +
@@ -260,13 +309,13 @@ function renderPending() {
     `<path d="M${x - 9} ${y}H${+x + 9}M${x} ${y - 9}V${+y + 9}" stroke="#fff" stroke-width="2.2"/>` +
     `<path d="M${x - 9} ${y}H${+x + 9}M${x} ${y - 9}V${+y + 9}" stroke="#111" stroke-width=".8"/>`;
   info.className = '';
-  info.innerHTML = `Zone <span class="zonebadge ${zoneClass(z)}">${z}</span> <span class="muted" style="font-size:13px">relâchez pour valider</span>`;
+  info.innerHTML = `Zone <span class="zonebadge ${zoneClass(z)}">${z}</span> <span class="muted" style="font-size:13px">${onLine ? 'sur la ligne (flèche de ' + String(sess.config.arrowMm).replace('.', ',') + ' mm) · ' : ''}relâchez pour valider</span>`;
 }
 
 /* ---------- Modifier une flèche déjà saisie ---------- */
 function openEdit(e, i) {
   const s = app.session;
-  const a = s && (s.ends[e] || [])[i];
+  const a = s && (getEnd(s, e) || [])[i];
   if (!a) return;
   app.edit = { e, i, pos: null };
   const f = face(s.config);
@@ -277,11 +326,12 @@ function openEdit(e, i) {
   }).join('');
   $('#edit-body').innerHTML = `
     <div class="row between">
-      <h2 id="edit-title">Volée ${e + 1} · flèche ${i + 1}</h2>
+      <h2 id="edit-title">${endLabel(s, e)} · flèche ${i + 1}</h2>
       <button class="btn sm icon-only" data-action="close" data-target="dlg-edit" aria-label="Fermer">${icon('x')}</button>
     </div>
     <p style="margin:0">Valeur actuelle <span class="zonebadge ${zoneClass(a.valStr)}">${a.valStr}</span></p>
     <div class="keypad">${keys}</div>
+    ${s.config.trackNums ? `<div class="lbl">N° de la flèche<div class="numrow" id="edit-nums">${Array.from({ length: Math.max(quiverSize(s), a.n || 0) }, (_, k) => `<button class="numb${a.n === k + 1 ? ' on' : ''}" data-action="edit-num" data-n="${k + 1}" aria-pressed="${a.n === k + 1}">${k + 1}</button>`).join('')}</div></div>` : ''}
     ${a.x != null ? '<p class="muted" style="margin:0;font-size:13px">Si la nouvelle valeur ne correspond plus à la position de l\'impact, cette position est retirée.</p>' : ''}
     <details>
       <summary class="btn">Replacer sur la cible</summary>
@@ -314,7 +364,7 @@ function openEdit(e, i) {
 }
 function applyEdit(v, x, y) {
   const s = app.session, ed = app.edit;
-  const a = s && ed && (s.ends[ed.e] || [])[ed.i];
+  const a = s && ed && (getEnd(s, ed.e) || [])[ed.i];
   if (!a) return;
   a.valStr = v;
   a.scoreVal = scoreOf(v);
@@ -326,16 +376,28 @@ function applyEdit(v, x, y) {
   toast(`Flèche modifiée : ${v}`);
 }
 
+function editNum(n) {
+  const s = app.session, ed = app.edit;
+  const a = s && ed && (getEnd(s, ed.e) || [])[ed.i];
+  if (!a) return;
+  a.n = a.n === n ? undefined : n;
+  if (a.n === undefined) delete a.n;
+  if (s.finished) archive(s); else persist();
+  $$('#edit-nums .numb').forEach(b => { const on = +b.dataset.n === a.n; b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); });
+  renderShoot();
+}
+
 /* ---------- Nouvelle séance ---------- */
 /* Modèles de séance : les quatre formats de départ + ceux que l'archer enregistre. */
 const getTemplates = () => {
   const t = store.get(KEYS.templates, null);
   return Array.isArray(t) ? t : PRESETS.map((p, i) => ({ id: 'p' + (i + 1), name: p.label, distance: p.distance, target: p.target, ape: p.ape, ends: p.ends }));
 };
+const tplInfo = t => `${esc(t.distance)} · ${esc(targetLabel(t.target))} · ${t.ends}×${t.ape} flèches${t.trial > 0 ? ` · ${t.trial} essai${t.trial > 1 ? 's' : ''}` : ''}${t.nums ? ' · n° de flèche' : ''}${t.sight === 'no' ? ' · sans viseur' : ''}${t.goal ? ` · objectif ${t.goal}` : ''}${t.quick ? ' · saisie rapide' : ''}`;
 const saveTemplates = list => store.set(KEYS.templates, list);
 const templateCfg = id => {
   const t = getTemplates().find(x => x.id === id);
-  return t ? { distance: t.distance, target: t.target, ape: t.ape, ends: t.ends, sight: t.sight || store.get(KEYS.cfg, {}).sight || 'yes', goal: t.goal || 0, quick: !!t.quick } : null;
+  return t ? { distance: t.distance, target: t.target, ape: t.ape, ends: t.ends, sight: t.sight || store.get(KEYS.cfg, {}).sight || 'yes', goal: t.goal || 0, quick: !!t.quick, trial: t.trial || 0, nums: !!t.nums } : null;
 };
 function renderPresets() {
   const list = getTemplates();
@@ -347,7 +409,7 @@ function tplSave() {
   const name = $('#tpl-name').value.trim().slice(0, 30);
   if (!name) { toast('Donnez un nom au modèle.'); return; }
   const c = readSetup(), list = getTemplates();
-  const item = { id: 'm' + Date.now(), name, distance: c.distance, target: c.target, ape: c.ape, ends: c.ends, sight: c.sight, goal: c.goal, quick: c.quick };
+  const item = { id: 'm' + Date.now(), name, distance: c.distance, target: c.target, ape: c.ape, ends: c.ends, sight: c.sight, goal: c.goal, quick: c.quick, trial: c.trial, nums: c.nums };
   const i = list.findIndex(x => x.name.toLowerCase() === name.toLowerCase());
   if (i >= 0) { item.id = list[i].id; list[i] = item; } else list.push(item);
   saveTemplates(list);
@@ -367,7 +429,7 @@ function renderTemplates() {
   const box = $('#tpl-list');
   if (!box) return;
   const list = getTemplates();
-  box.innerHTML = list.length ? list.map(t => `<div class="rec"><div><b>${esc(t.name)}</b><div class="muted" style="font-size:13px">${esc(t.distance)} · ${esc(targetLabel(t.target))} · ${t.ends}×${t.ape} flèches${t.sight === 'no' ? ' · sans viseur' : ''}${t.goal ? ` · objectif ${t.goal}` : ''}${t.quick ? ' · saisie rapide' : ''}</div></div>
+  box.innerHTML = list.length ? list.map(t => `<div class="rec"><div><b>${esc(t.name)}</b><div class="muted" style="font-size:13px">${tplInfo(t)}</div></div>
       <div class="row"><button class="btn sm icon-only" data-action="tpl-up" data-id="${esc(t.id)}" aria-label="Monter">↑</button><button class="btn sm icon-only" data-action="tpl-down" data-id="${esc(t.id)}" aria-label="Descendre">↓</button><button class="btn sm icon-only danger" data-action="tpl-del" data-id="${esc(t.id)}" aria-label="Supprimer">${icon('trash')}</button></div></div>`).join('')
     : '<p class="muted" style="margin:6px 0 0;font-size:13px">Aucun modèle pour l\'instant.</p>';
 }
@@ -421,6 +483,8 @@ function fillSetup(cfg) {
   if (cfg.sight) $('#cfg-sight').value = cfg.sight;   // les modèles gardent le choix du viseur
   if ('goal' in cfg) $('#cfg-goal').value = cfg.goal || '';
   if ('quick' in cfg) $('#cfg-quick').checked = !!cfg.quick;
+  $('#cfg-trial').value = cfg.trial > 0 ? cfg.trial : 0;
+  $('#cfg-nums').checked = !!cfg.nums;
 }
 function readSetup() {
   let distance = $('#cfg-distance').value;
@@ -430,10 +494,12 @@ function readSetup() {
     distance = distance.replace(/\s+/g, '').slice(0, 12);
   }
   const ends = Math.max(1, Math.min(60, parseInt($('#cfg-ends').value, 10) || 10));
-  return { distance, target: $('#cfg-target').value, ape: parseInt($('#cfg-ape').value, 10), ends, sight: $('#cfg-sight').value, goal: Math.max(0, parseInt($('#cfg-goal').value, 10) || 0), quick: $('#cfg-quick').checked };
+  return { distance, target: $('#cfg-target').value, ape: parseInt($('#cfg-ape').value, 10), ends, sight: $('#cfg-sight').value, goal: Math.max(0, parseInt($('#cfg-goal').value, 10) || 0), quick: $('#cfg-quick').checked,
+    trial: Math.max(0, Math.min(10, parseInt($('#cfg-trial').value, 10) || 0)), nums: $('#cfg-nums').checked, sheet: $('#cfg-sheet').value };
 }
 function showSetup() {
   fillSetup(store.get(KEYS.cfg, { distance: '18m', target: '40', ape: 3, ends: 10, sight: 'yes' }));
+  renderSheetSelect();
   const pr = store.get(KEYS.profile, {});
   const who = [pr.name, [pr.bow, pr.type].filter(Boolean).join(' · ')].filter(Boolean).join(' — ');
   const pl = $('#setup-profile');

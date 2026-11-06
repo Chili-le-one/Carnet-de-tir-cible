@@ -123,6 +123,8 @@ function printSession(s) {
     <h1>Carnet de Tir Cible</h1>
     <div class="ps-meta"><b>${esc(fmtDate(s.date, true))}</b> · ${esc(s.config.distance)} · ${esc(targetLabel(s.config.targetType))} · ${s.config.totalEnds} volées de ${s.config.arrowsPerEnd} flèches</div>
     ${who ? `<div class="ps-meta">${esc(who)}</div>` : ''}
+    ${setupLine(s) ? `<div class="ps-meta">${esc(setupLine(s))}</div>` : ''}
+    ${trialN(s) ? `<div class="ps-meta">${trialN(s)} volée${trialN(s) > 1 ? 's' : ''} d'essai non comptée${trialN(s) > 1 ? 's' : ''}.</div>` : ''}
     ${(n.weather || n.real) ? `<div class="ps-meta">${[n.weather, n.real ? 'Distance réelle : ' + n.real : ''].filter(Boolean).map(esc).join(' · ')}</div>` : ''}
     <table><thead><tr><th>Volée</th><th>Flèches</th><th>Total</th><th>Cumul</th></tr></thead><tbody>${rows}</tbody></table>
     <div class="ps-meta"><b>Score : ${st.total} / ${st.max}</b> · Moyenne : ${st.count ? st.avg.toFixed(2) : '–'} · 10 et X : ${st.tens} · X : ${st.xs}</div>
@@ -189,6 +191,8 @@ function openSummary(s, fresh = false) {
       <button class="btn sm icon-only" data-action="close" data-target="dlg-summary" aria-label="Fermer">${icon('x')}</button>
     </div>
     ${who ? `<div class="muted" style="font-size:13px;margin-top:-8px">${esc(who)}</div>` : ''}
+    ${setupLine(s) ? `<div class="muted" style="font-size:13px;margin-top:-8px">${esc(setupLine(s))}</div>` : ''}
+    ${trialN(s) ? `<div class="muted" style="font-size:13px;margin-top:-8px">${trialN(s)} volée${trialN(s) > 1 ? 's' : ''} d'essai non comptée${trialN(s) > 1 ? 's' : ''}.</div>` : ''}
     <div class="sum-score"><span class="big">${st.total}</span><span class="muted">/ ${st.max} pts</span></div>
     ${banner}
     <div class="minis">

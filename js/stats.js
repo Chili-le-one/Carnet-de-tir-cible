@@ -239,6 +239,32 @@ function renderVolume() {
     <svg class="chart" viewBox="0 0 ${8 * (bw + gap) + 4} ${H + 34}" role="img" aria-label="Flèches par semaine">${bars}</svg>`;
 }
 
+/* Bloc « Numéros de flèches » : une ligne par numéro (volées comptées uniquement). */
+function renderNumbers(data) {
+  const card = $('#nums-card'), by = {};
+  data.forEach(s => { const k = cmPerUnit(s.config); endsOf(s).flat().forEach(a => { if (a.n) (by[a.n] = by[a.n] || []).push({ a, k }); }); });
+  const nums = Object.keys(by).map(Number).sort((x, y) => x - y);
+  card.hidden = !nums.length;
+  if (!nums.length) return;
+  const sameFace = new Set(data.map(s => s.config.distance + '|' + s.config.targetType)).size === 1;
+  const rows = nums.map(n => {
+    const l = by[n], cnt = l.length, avg = l.reduce((t, o) => t + o.a.scoreVal, 0) / cnt;
+    const tens = l.filter(o => o.a.valStr === '10' || o.a.valStr === 'X').length;
+    const pts = l.filter(o => o.a.x != null && o.a.y != null).map(o => ({ x: o.a.x * o.k, y: o.a.y * o.k }));
+    let grp = null;
+    if (sameFace && pts.length >= 3) {
+      const mx = pts.reduce((t, p) => t + p.x, 0) / pts.length, my = pts.reduce((t, p) => t + p.y, 0) / pts.length;
+      grp = pts.reduce((t, p) => t + Math.hypot(p.x - mx, p.y - my), 0) / pts.length;
+    }
+    return { n, cnt, avg, pct: Math.round(tens / cnt * 100), grp };
+  });
+  const enough = rows.filter(r => r.cnt >= 10), bestAvg = enough.length > 1 ? Math.max(...enough.map(r => r.avg)) : null;
+  card.innerHTML = `<h3 style="margin-bottom:6px">Numéros de flèches</h3>
+    <div class="table-wrap"><table><thead><tr><th>N°</th><th>Flèches</th><th>Moyenne</th><th>10 et X</th><th>Groupement</th></tr></thead><tbody>${rows.map(r =>
+      `<tr><td><b>${r.n}</b></td><td>${r.cnt}</td><td${r.cnt >= 10 && r.avg === bestAvg ? ' style="font-weight:800"' : ''}>${r.avg.toFixed(2)}</td><td>${r.pct}%</td><td>${r.grp === null ? '–' : r.grp.toFixed(1) + ' cm'}</td></tr>`).join('')}</tbody></table></div>
+    <p class="muted" style="margin:8px 0 0;font-size:13px">Volées comptées seulement. Les écarts ne deviennent lisibles qu'à partir d'une dizaine de tirs par numéro. Groupement : rayon moyen autour du centre des impacts du numéro, affiché pour une seule distance et un seul blason (utilisez les filtres).</p>`;
+}
+
 function renderStats() {
   fillFilters();
   renderVolume();
@@ -296,6 +322,7 @@ function renderStats() {
   $('#evo-chart').innerHTML = lineChart(vals, asc.map(s => fmtDate(s.date)), useTotal ? 0 : 1, shown);
   $('#evo-gear').innerHTML = shown.map(m => `<div class="muted" style="font-size:13px;margin-top:4px"><b style="color:var(--ink)">${m.n}</b> · ${esc(fmtDate(m.g.date + 'T12:00:00'))} — ${esc(m.g.text)}</div>`).join('');
   renderRegularity(data);
+  renderNumbers(data);
 
   // Répartition
   const colors = { '10 et X': 'var(--gold)', '9': 'var(--gold)', '8': 'var(--red)', '7': 'var(--red)', '6': 'var(--blue)', '5 à 1': '#6b7686', 'M': 'var(--danger)' };

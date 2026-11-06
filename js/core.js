@@ -25,7 +25,8 @@ const KEYS = {
   gear: 'carnet_tir_materiel',
   order: 'carnet_tir_ordre',
   contests: 'carnet_tir_concours',
-  templates: 'carnet_tir_modeles'
+  templates: 'carnet_tir_modeles',
+  sheets: 'carnet_tir_fiches'
 };
 
 const PRESETS = [
@@ -113,12 +114,17 @@ function zoneClass(v) {
    Le trispot ne comporte que les zones 10 à 5. */
 function face(cfg) {
   const tri = cfg.targetType === 'Trispot';
-  return { tri, minRing: tri ? 5 : 1, extent: tri ? 60 : 100, diam: tri ? 40 : (parseInt(cfg.targetType, 10) || 40) };
+  const diam = tri ? 40 : (parseInt(cfg.targetType, 10) || 40);
+  /* Règle de la flèche sur la ligne : si le diamètre des flèches est connu (fiche de réglage),
+     la zone se lit au bord de la flèche le plus proche du centre : une flèche qui touche la ligne
+     vaut la zone supérieure. arrowU = rayon de la flèche en unités SVG (1 unité = diam/200 cm). */
+  const mm = +cfg.arrowMm || 0;
+  return { tri, minRing: tri ? 5 : 1, extent: tri ? 60 : 100, diam, arrowU: mm > 0 ? 10 * mm / diam : 0 };
 }
 const cmPerUnit = cfg => face(cfg).diam / 200;
 
 function zoneAt(x, y, f) {
-  const r = Math.hypot(x, y);
+  const r = Math.max(0, Math.hypot(x, y) - (f.arrowU || 0));
   if (r <= 5) return 'X';
   if (r > f.extent) return 'M';
   const ring = 11 - Math.ceil(r / 10);
@@ -150,7 +156,25 @@ function dot(x, y, o = {}) {
 }
 
 /* Ligne « Archer — Arc · Type » (bilan, image, feuille imprimée). */
+const setupLine = s => s.setup ? [`Fiche : ${s.setup.bow}`, s.setup.label || fmtDate(s.setup.date + 'T12:00:00', false), s.setup.arrowMm > 0 ? `flèches Ø ${String(s.setup.arrowMm).replace('.', ',')} mm` : ''].filter(Boolean).join(' · ') : '';
 const whoLine = s => [s.archer, [s.bow, s.bowType].filter(Boolean).join(' · ')].filter(Boolean).join(' — ');
+
+/* ---------- Volées d'essai ----------
+   Elles sont rangées à part (s.trial) : s.ends ne contient que les volées comptées, donc le score,
+   les stats, les records, les cartes et l'export n'en tiennent jamais compte.
+   currentEndIndex est un rang global : 0 à T-1 = essais, ensuite les volées comptées. */
+const trialN = s => (s.config && +s.config.trialEnds) || 0;
+const allEnds = s => trialN(s) + s.config.totalEnds;
+const isTrialIdx = (s, i) => i < trialN(s);
+const getEnd = (s, i) => { const T = trialN(s); return i < T ? (s.trial || [])[i] : s.ends[i - T]; };
+const ensureEnd = (s, i) => {
+  const T = trialN(s);
+  if (i < T) { s.trial = s.trial || []; return s.trial[i] || (s.trial[i] = []); }
+  return s.ends[i - T] || (s.ends[i - T] = []);
+};
+const setEnd = (s, i, arr) => { const T = trialN(s); if (i < T) { s.trial = s.trial || []; s.trial[i] = arr; } else s.ends[i - T] = arr; };
+const endLabel = (s, i) => isTrialIdx(s, i) ? `Essai ${i + 1}` : `Volée ${i - trialN(s) + 1}`;
+const arrowCount = s => endsOf(s).flat().length + (s.trial || []).reduce((n, e) => n + (e || []).length, 0);
 
 /* ---------- Statistiques d'une séance ---------- */
 const endsOf = s => (s.ends || []).filter(Boolean);
@@ -169,6 +193,7 @@ function isValidSession(s) {
     && Number.isFinite(+s.config.arrowsPerEnd) && +s.config.arrowsPerEnd > 0
     && Number.isFinite(+s.config.totalEnds) && +s.config.totalEnds > 0
     && s.config.distance !== undefined && s.config.targetType !== undefined
+    && (s.trial === undefined || s.trial === null || Array.isArray(s.trial))
     && s.ends.every(e => e === null || e === undefined || (Array.isArray(e) && e.every(a => a && typeof a.valStr === 'string' && Number.isFinite(+a.scoreVal)))));
 }
 function normalizeSession(s) {
@@ -178,12 +203,19 @@ function normalizeSession(s) {
   c.distance = String(c.distance);
   c.targetType = String(c.targetType);
   s.currentEndIndex = Number.isFinite(+s.currentEndIndex) ? +s.currentEndIndex : 0;
+  c.trialEnds = Math.max(0, parseInt(c.trialEnds, 10) || 0);
+  if (!c.trialEnds) delete c.trialEnds;
   s.ends = s.ends.map(e => e || []);
-  s.ends.forEach(e => e.forEach(a => {
+  s.trial = (Array.isArray(s.trial) ? s.trial : []).map(e => (Array.isArray(e) ? e : []).filter(a => a && typeof a.valStr === 'string' && Number.isFinite(+a.scoreVal)));
+  const fix = a => {
     a.scoreVal = +a.scoreVal;
     a.x = Number.isFinite(+a.x) && a.x !== null && a.x !== '' ? +a.x : null;
     a.y = Number.isFinite(+a.y) && a.y !== null && a.y !== '' ? +a.y : null;
-  }));
+    if (a.n !== undefined) { const n = parseInt(a.n, 10); if (n > 0) a.n = n; else delete a.n; }
+  };
+  s.ends.forEach(e => e.forEach(fix));
+  s.trial.forEach(e => e.forEach(fix));
+  if (!c.trialEnds) delete s.trial;
   return s;
 }
 
@@ -222,11 +254,21 @@ function archive(s) {
 
 function createSession(cfg) {
   const pr = store.get(KEYS.profile, {});
+  /* Fiche de réglage liée à la séance : on en garde une copie (la fiche peut changer ensuite). */
+  const ref = findVariant(cfg.sheet !== undefined ? cfg.sheet : defaultSheetKey());
+  const setup = ref ? (({ id, ...rest }) => ({ sheet: ref.sheet.id, variant: id, bow: ref.sheet.bow, ...rest }))(ref.variant) : null;
   return {
     id: 'session_' + Date.now(),
     date: new Date().toISOString(),
-    archer: pr.name || '', bow: pr.bow || '', bowType: pr.type || '',
-    config: { distance: cfg.distance, targetType: cfg.target, arrowsPerEnd: cfg.ape, totalEnds: cfg.ends },
+    archer: pr.name || '', bow: (setup && setup.bow) || pr.bow || '', bowType: pr.type || '',
+    config: {
+      distance: cfg.distance, targetType: cfg.target, arrowsPerEnd: cfg.ape, totalEnds: cfg.ends,
+      ...(cfg.trial > 0 ? { trialEnds: cfg.trial } : {}),               // volées d'essai : avant les volées comptées
+      ...(setup && setup.arrowMm > 0 ? { arrowMm: setup.arrowMm } : {}),  // règle de la flèche sur la ligne (mode Cible)
+      ...(cfg.nums ? { trackNums: true } : {})                           // suivi du numéro de flèche
+    },
+    ...(setup ? { setup } : {}),
+    ...(cfg.trial > 0 ? { trial: [] } : {}),
     ...(cfg.sight === 'no' ? { noSight: true } : {}),   // séance sans viseur : pas d'aide au réglage
     ...(cfg.goal ? { goal: cfg.goal } : {}),             // objectif propre à la séance (modèle)
     ...(cfg.quick ? { quick: true } : {}),               // saisie rapide : écran réduit, notes à la fin
