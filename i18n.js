@@ -12,6 +12,17 @@
   if (lang === 'fr') return;
 
   var EXACT = {
+    "Essai": "Trial", "non comptée": "not counted", "Volées d'essai (non comptées)": "Trial ends (not counted)",
+    "Suivre le numéro de flèche": "Track arrow number", "N° de la flèche": "Arrow number", "N° de flèche": "Arrow no.", "N°": "No.",
+    "Fiche de réglage": "Tuning sheet", "Aucune fiche": "No sheet", "Fiches de réglage": "Tuning sheets", "Numéros de flèches": "Arrow numbers",
+    "Nouvelle fiche (arc)": "New sheet (bow)", "Nouvelle fiche de réglage": "New tuning sheet", "Modifier la variante": "Edit variant", "Nouvelle variante": "New variant", "Variante": "Variant",
+    "Nom de la variante": "Variant name", "Diamètre des flèches (mm)": "Arrow diameter (mm)", "Flèches numérotées": "Numbered arrows", "Poids (lb)": "Draw weight (lb)",
+    "Hauteur de corde": "Brace height", "Point d'encochage": "Nocking point", "Longueur de flèche": "Arrow length", "Pointe (grains)": "Point (grains)", "Empennage": "Fletching", "Remarques": "Remarks",
+    "Aucune fiche pour l'instant.": "No sheet yet.", "Fiche enregistrée.": "Sheet saved.", "Indiquez le nom de l'arc.": "Enter the bow name.", "Groupement": "Grouping", "Flèches": "Arrows",
+    "Une fiche par arc, avec des variantes datées (diamètre des flèches, poids, hauteur de corde…). La variante choisie est liée à chaque séance ; le diamètre des flèches sert à la règle de la ligne en mode Cible.": "One sheet per bow, with dated variants (arrow diameter, weight, brace height…). The chosen variant is linked to each session; the arrow diameter drives the line-cutter rule in Target mode.",
+    "Supprimer cette variante ? Les séances déjà enregistrées gardent une copie de leurs réglages.": "Delete this variant? Sessions already saved keep a copy of their settings.",
+    "Supprimer cette fiche et toutes ses variantes ? Les séances déjà enregistrées gardent une copie de leurs réglages.": "Delete this sheet and all its variants? Sessions already saved keep a copy of their settings.",
+    "Effacer toutes les flèches de cet essai ?": "Clear all arrows of this trial end?",
     "5 à 1": "5 to 1",
     "Thème": "Theme", "Carnet de terrain (papier, encre bleue)": "Field notebook (paper, blue ink)",
     "Thème d'origine (clair ou nuit selon le téléphone)": "Original theme (light or dark, following the phone)",
@@ -217,6 +228,11 @@
 
   function plural(n, one, many) { return n + ' ' + (parseFloat(n) === 1 ? one : many); }
   var PATTERNS = [
+    [/^Essai (\d+)\/(\d+)$/, function (m) { return 'Trial ' + m[1] + '/' + m[2]; }],
+    [/^Essai (\d+) · flèche (\d+)$/, function (m) { return 'Trial ' + m[1] + ' · arrow ' + m[2]; }],
+    [/^Essai (\d+) : (\d+) points \(non comptés\)( · la séance commence)?$/, function (m) { return 'Trial ' + m[1] + ': ' + m[2] + ' points (not counted)' + (m[3] ? ' · the session starts' : ''); }],
+    [/^(\d+) volées? d'essai non comptées?\.$/, function (m) { return m[1] + ' trial end' + (m[1] === '1' ? '' : 's') + ' not counted.'; }],
+    [/^sur la ligne \(flèche de ([\d,]+) mm\) · relâchez pour valider$/, function (m) { return 'on the line (' + m[1] + ' mm arrow) · release to confirm'; }],
     [/^(v\d+) · (\d{1,2}) ([a-zéû]+)\.? (\d{4})$/i, function (m) { var M = { 'janv': 'Jan', 'févr': 'Feb', 'mars': 'Mar', 'avr': 'Apr', 'mai': 'May', 'juin': 'Jun', 'juil': 'Jul', 'août': 'Aug', 'sept': 'Sep', 'oct': 'Oct', 'nov': 'Nov', 'déc': 'Dec' }; return m[1] + ' · ' + m[2] + ' ' + (M[m[3].toLowerCase()] || m[3]) + ' ' + m[4]; }],
     [/^V(\d+) : ([\d.]+)$/, function (m) { return 'End ' + m[1] + ': ' + m[2]; }],
     [/^V(\d+)$/, function (m) { return 'E' + m[1]; }],

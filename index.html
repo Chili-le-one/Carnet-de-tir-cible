@@ -72,10 +72,11 @@
 
       <div id="end-card" class="card" data-ord="volee">
         <div class="row between">
-          <h2>Volée <span id="end-no">1</span></h2>
+          <h2><span id="end-lbl">Volée</span> <span id="end-no">1</span> <span class="chip" id="end-trial" hidden>non comptée</span></h2>
           <span class="muted">Total <b id="end-sum" style="color:var(--ink)">0</b></span>
         </div>
         <div id="slots" class="slots"></div>
+        <div id="num-row" class="lbl" hidden>N° de la flèche<div id="num-btns" class="numrow"></div></div>
         <div class="row">
           <button class="btn" data-action="undo"><span data-i="undo"></span>Annuler la dernière</button>
           <button class="btn danger" data-action="clear-end"><span data-i="trash"></span>Effacer la volée</button>
@@ -194,6 +195,7 @@
         <div id="evo-gear"></div>
       </div>
       <div class="card" id="regularity-card" data-ord="regularite" hidden></div>
+      <div class="card" id="nums-card" data-ord="numeros" hidden></div>
       <div class="card" data-ord="repartition">
         <h3>Répartition des flèches</h3>
         <div id="dist-bars"></div>
@@ -256,6 +258,13 @@
           </select>
         </label>
       </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom:6px">Fiches de réglage</h2>
+      <p class="muted" style="margin-top:0;font-size:13px">Une fiche par arc, avec des variantes datées (diamètre des flèches, poids, hauteur de corde…). La variante choisie est liée à chaque séance ; le diamètre des flèches sert à la règle de la ligne en mode Cible.</p>
+      <div id="sheet-list"></div>
+      <button class="btn" style="margin-top:8px" data-action="sheet-new"><span data-i="plus"></span>Nouvelle fiche (arc)</button>
     </div>
 
     <div class="card">
@@ -351,6 +360,42 @@
 </nav>
 
 <!-- ============ NOUVELLE SÉANCE ============ -->
+<dialog id="dlg-var" aria-labelledby="var-title">
+  <div class="dlg">
+    <div class="row between">
+      <h2 id="var-title">Fiche de réglage</h2>
+      <button class="btn sm icon-only" data-action="close" data-target="dlg-var" aria-label="Fermer"><span data-i="x"></span></button>
+    </div>
+    <label id="v-bow-wrap">Arc<input id="v-bow" maxlength="40" autocomplete="off" placeholder="ex. Hoyt Formula, 38 lb"></label>
+    <div class="two">
+      <label>Date<input id="v-date" type="date"></label>
+      <label>Nom de la variante<input id="v-label" maxlength="40" autocomplete="off" placeholder="ex. Hiver 2026"></label>
+    </div>
+    <div class="two">
+      <label>Diamètre des flèches (mm)<input id="v-arrow" type="number" inputmode="decimal" step="0.1" min="0" max="20" placeholder="ex. 5.5"></label>
+      <label>Flèches numérotées<input id="v-quiver" type="number" inputmode="numeric" min="0" max="24" placeholder="ex. 12"></label>
+    </div>
+    <div class="two">
+      <label>Poids (lb)<input id="v-pound" inputmode="decimal" maxlength="30" autocomplete="off"></label>
+      <label>Hauteur de corde<input id="v-brace" maxlength="30" autocomplete="off" placeholder="ex. 22,5 cm"></label>
+    </div>
+    <div class="two">
+      <label>Point d'encochage<input id="v-nock" maxlength="30" autocomplete="off"></label>
+      <label>Tiller<input id="v-tiller" maxlength="30" autocomplete="off"></label>
+    </div>
+    <div class="two">
+      <label>Longueur de flèche<input id="v-alen" maxlength="30" autocomplete="off"></label>
+      <label>Spine<input id="v-spine" maxlength="30" autocomplete="off"></label>
+    </div>
+    <div class="two">
+      <label>Pointe (grains)<input id="v-point" maxlength="30" autocomplete="off"></label>
+      <label>Empennage<input id="v-fletch" maxlength="30" autocomplete="off"></label>
+    </div>
+    <label>Remarques<textarea id="v-notes" rows="2" maxlength="300"></textarea></label>
+    <button class="btn primary big" data-action="var-save"><span data-i="check"></span>Enregistrer</button>
+  </div>
+</dialog>
+
 <dialog id="dlg-setup" aria-labelledby="setup-title">
   <div class="dlg">
     <div class="row between">
@@ -395,10 +440,14 @@
     <label>Viseur
       <select id="cfg-sight"><option value="yes">Avec viseur</option><option value="no">Sans viseur</option></select>
     </label>
+    <label id="cfg-sheet-wrap" hidden>Fiche de réglage
+      <select id="cfg-sheet"></select>
+    </label>
     <label>Objectif de score (facultatif)
       <input id="cfg-goal" type="number" inputmode="numeric" min="0" placeholder="ex. 540">
     </label>
     <label class="check"><input type="checkbox" id="cfg-quick">Saisie rapide (écran réduit, notes à la fin)</label>
+    <label class="check"><input type="checkbox" id="cfg-nums">Suivre le numéro de flèche</label>
     <div class="two">
       <label>Flèches par volée
         <select id="cfg-ape"><option value="1">1 flèche</option><option value="2">2 flèches</option><option value="3">3 flèches</option><option value="4">4 flèches</option><option value="5">5 flèches</option><option value="6">6 flèches</option><option value="7">7 flèches</option><option value="8">8 flèches</option><option value="9">9 flèches</option><option value="10">10 flèches</option><option value="11">11 flèches</option><option value="12">12 flèches</option></select>
@@ -407,6 +456,9 @@
         <input id="cfg-ends" type="number" inputmode="numeric" min="1" max="60" value="10">
       </label>
     </div>
+    <label>Volées d'essai (non comptées)
+      <input id="cfg-trial" type="number" inputmode="numeric" min="0" max="10" value="0">
+    </label>
     <details class="adv">
       <summary>Enregistrer comme modèle</summary>
       <div class="fields">
@@ -501,6 +553,7 @@
 <script src="js/historique.js"></script>
 <script src="js/sauvegarde.js"></script>
 <script src="js/reglages.js"></script>
+<script src="js/fiches.js"></script>
 <script src="js/ordre.js"></script>
 <script src="js/actions.js"></script>
 <script src="js/events.js"></script>

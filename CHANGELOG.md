@@ -8,6 +8,18 @@ Les dates sont celles de la mise à disposition des fichiers.
 
 ---
 
+## v24 — 6 novembre 2026
+*Fichiers modifiés : `index.html`, `style.css`, `i18n.js`, `sw.js`, `js/core.js`, `js/saisie.js`, `js/stats.js`, `js/bilan.js`, `js/sauvegarde.js`, `js/reglages.js`, `js/actions.js`, `js/ordre.js`, `js/main.js`. Nouveau : `js/fiches.js`.*
+
+### Ajouts
+- **Volées d'essai** : nombre choisi dans « Nouvelle séance » et enregistré dans les modèles. Elles se tirent avant la séance, ne comptent ni dans le score, ni dans les stats, ni dans les records, et apparaissent grisées (E1, E2…) dans la feuille de marque.
+- **Fiches de réglage par arc**, avec variantes datées (diamètre des flèches, flèches numérotées, poids, hauteur de corde, point d'encochage, tiller, longueur, spine, pointe, empennage, remarques). La variante la plus récente de l'arc du profil est proposée à chaque nouvelle séance ; la séance en garde une copie, rappelée dans le bilan et l'impression.
+- **Règle de la flèche sur la ligne** (mode Cible) : avec un diamètre de flèche dans la fiche, la zone se lit au bord de la flèche ; une flèche qui touche la ligne vaut la zone supérieure. L'indication « sur la ligne » s'affiche pendant la visée.
+- **Numéro de flèche** : option « Suivre le numéro de flèche » ; le numéro avance tout seul et se corrige d'un toucher, ou après coup dans la fenêtre de modification d'une flèche.
+- **Stats** : bloc « Numéros de flèches » (flèches, moyenne, 10 et X, groupement). Colonne « N° de flèche » ajoutée à l'export CSV.
+
+---
+
 ## v23 — 3 novembre 2026
 *Fichiers modifiés : `index.html`, `sw.js`, tout le dossier `js/` (nouveau). `app.js` est supprimé.*
 
