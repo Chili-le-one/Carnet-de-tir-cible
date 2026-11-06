@@ -25,7 +25,7 @@ function setMode(m) {
 
 /* ---------- Actions (délégation d'événements) ---------- */
 
-const APP_VERSION = 'v23 · 3 nov. 2026';
+const APP_VERSION = 'v24 · 6 nov. 2026';
 let deferredInstall = null;
 
 const actions = {
@@ -56,6 +56,14 @@ const actions = {
   'edit-set': d => applyEdit(d.v),
   'share-image': () => app.summarySession && shareSummaryImage(app.summarySession),
   'print-session': () => app.summarySession && printSession(app.summarySession),
+  'num-pick': d => pickNum(+d.n),
+  'edit-num': d => editNum(+d.n),
+  'sheet-new': () => varOpen(null, null),
+  'var-new': d => varOpen(d.sheet, null),
+  'var-edit': d => varOpen(d.sheet, d.id),
+  'var-save': () => varSave(),
+  'var-del': d => varDel(d.sheet, d.id),
+  'sheet-del': d => sheetDel(d.sheet),
   'gear-add': () => addGear(),
   'gear-del': d => delGear(d.id),
   'map-view': d => { app.mapView = d.view; renderImpactMap(); },
