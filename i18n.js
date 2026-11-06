@@ -12,6 +12,9 @@
   if (lang === 'fr') return;
 
   var EXACT = {
+    "Mes flèches": "My arrows", "Mes flèches du jour": "Today's arrows", "Choisir mes flèches du jour": "Choose today's arrows",
+    "sur la ligne · relâchez": "on the line · release", "Gardez au moins une flèche.": "Keep at least one arrow.",
+    "Touchez les numéros des flèches que vous tirez aujourd'hui : seuls ceux-là seront proposés.": "Tap the numbers of the arrows you shoot today: only those will be offered.",
     "Essai": "Trial", "non comptée": "not counted", "Volées d'essai (non comptées)": "Trial ends (not counted)",
     "Suivre le numéro de flèche": "Track arrow number", "N° de la flèche": "Arrow number", "N° de flèche": "Arrow no.", "N°": "No.",
     "Fiche de réglage": "Tuning sheet", "Aucune fiche": "No sheet", "Fiches de réglage": "Tuning sheets", "Numéros de flèches": "Arrow numbers",
@@ -228,6 +231,8 @@
 
   function plural(n, one, many) { return n + ' ' + (parseFloat(n) === 1 ? one : many); }
   var PATTERNS = [
+    [/^Toutes \(1 à (\d+)\)$/, function (m) { return 'All (1 to ' + m[1] + ')'; }],
+    [/^Flèche de ([\d,]+) mm : la ligne compte pour la zone supérieure$/, function (m) { return m[1] + ' mm arrow: the line counts as the higher zone'; }],
     [/^Essai (\d+)\/(\d+)$/, function (m) { return 'Trial ' + m[1] + '/' + m[2]; }],
     [/^Essai (\d+) · flèche (\d+)$/, function (m) { return 'Trial ' + m[1] + ' · arrow ' + m[2]; }],
     [/^Essai (\d+) : (\d+) points \(non comptés\)( · la séance commence)?$/, function (m) { return 'Trial ' + m[1] + ': ' + m[2] + ' points (not counted)' + (m[3] ? ' · the session starts' : ''); }],

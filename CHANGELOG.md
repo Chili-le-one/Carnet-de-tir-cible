@@ -8,6 +8,17 @@ Les dates sont celles de la mise à disposition des fichiers.
 
 ---
 
+## v25 — 6 novembre 2026
+*Fichiers modifiés : `style.css`, `i18n.js`, `sw.js`, `js/saisie.js`, `js/actions.js`.*
+
+### Corrections
+- **Cible : plus de tremblement pendant la visée.** La barre « Zone … relâchez pour valider » a maintenant une hauteur fixe et le message reste sur une seule ligne (« sur la ligne · relâchez » quand la flèche touche la ligne ; le détail du diamètre est dans l'info-bulle). La cible ne bouge plus quand le message change.
+
+### Ajouts
+- **Flèches du jour.** Bouton « Mes flèches » à côté des numéros de la volée : on touche les numéros utilisés aujourd'hui (ex. 4, 8 et 10), seuls ceux-là sont proposés. Le numéro avance dans cette liste (4 → 8 → 10 → 4…), la liste est gardée dans la séance (`config.arrowNums`) et reproposée à la séance suivante. La fenêtre de modification d'une flèche propose la même liste.
+
+---
+
 ## v24 — 6 novembre 2026
 *Fichiers modifiés : `index.html`, `style.css`, `i18n.js`, `sw.js`, `js/core.js`, `js/saisie.js`, `js/stats.js`, `js/bilan.js`, `js/sauvegarde.js`, `js/reglages.js`, `js/actions.js`, `js/ordre.js`, `js/main.js`. Nouveau : `js/fiches.js`.*
 

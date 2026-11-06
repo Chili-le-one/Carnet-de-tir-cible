@@ -321,3 +321,13 @@ tr.trial .sc{filter:grayscale(.85)}
 /* Fiches de réglage */
 .sheet{padding:10px 0;border-top:1px solid var(--line)}
 .sheet:first-of-type{border-top:0}
+
+/* Barre de visée : hauteur fixe, le message ne fait plus bouger la cible (v25) */
+.pendingbar{height:52px;min-height:52px;overflow:hidden}
+.pendingbar .btn{flex:none}
+#pending-info{flex:1 1 auto;min-width:0;overflow:hidden;line-height:1.2}
+#pending-info .pi-hint{font-size:13px;color:var(--muted);white-space:nowrap}
+#shoot-main.quick .pendingbar{height:44px;min-height:44px}
+/* Flèches du jour */
+.numb.cfg{padding:0 10px;font-size:13px;font-weight:600;color:var(--muted)}
+#shoot-main.quick #num-row{order:5;flex:1 1 100%;margin:0}
