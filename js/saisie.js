@@ -6,30 +6,98 @@
 /* Nombre de flèches numérotées : celui de la fiche de réglage, sinon 6 (ou plus si la volée est plus longue). */
 const quiverSize = s => Math.max(1, Math.min(24, +(s.setup && s.setup.quiver) || Math.max(6, s.config.arrowsPerEnd)));
 /* Numéro proposé pour la prochaine flèche : il avance tout seul (1, 2, 3…, puis retour à 1) et se corrige d'un toucher. */
+/* Flèches du jour : numéros réellement utilisés (ex. 4, 8, 10). La liste est gardée dans la séance (config.arrowNums)
+   et mémorisée pour la séance suivante. Sans liste : tous les numéros de 1 à quiverSize. */
+const NUMS_KEY = 'carnet_tir_flechesjour';
+function numList(s) {
+  const c = s.config;
+  if (!Array.isArray(c.arrowNums) && !s.finished) {
+    const saved = store.get(NUMS_KEY, null);
+    const ok = Array.isArray(saved) ? [...new Set(saved.map(Number))].filter(n => Number.isInteger(n) && n >= 1 && n <= 24).sort((p, q) => p - q) : [];
+    if (ok.length) c.arrowNums = ok;
+  }
+  if (Array.isArray(c.arrowNums) && c.arrowNums.length) return c.arrowNums;
+  return Array.from({ length: quiverSize(s) }, (_, i) => i + 1);
+}
+/* Numéro qui suit n dans la liste (retour au premier après le dernier). */
+const nextInList = (s, n) => { const l = numList(s); return l.find(k => k > n) || l[0]; };
 function currentNum(s) {
+  const list = numList(s);
   if (app.numFor !== s.id) {
     let last = 0;
     [...(s.trial || []), ...s.ends].forEach(e => (e || []).forEach(a => { if (a.n) last = a.n; }));
-    app.nextNum = last % quiverSize(s) + 1;
+    app.nextNum = last ? nextInList(s, last) : list[0];
     app.numFor = s.id;
   }
-  return Math.min(app.nextNum, quiverSize(s));
+  if (!list.includes(app.nextNum)) app.nextNum = list.find(k => k >= app.nextNum) || list[0];
+  return app.nextNum;
 }
 function pickNum(n) {
   const s = app.session;
   if (!s || !s.config.trackNums) return;
-  app.nextNum = Math.max(1, Math.min(quiverSize(s), n));
+  app.nextNum = Math.max(1, Math.min(24, n));
   app.numFor = s.id;
   renderNumRow();
 }
+/* Fenêtre « Mes flèches du jour » (réutilise la fenêtre de modification #dlg-edit). */
+function numsCfgRender() {
+  const s = app.session, box = $('#nums-cfg');
+  if (!s || !box) return;
+  const on = new Set(numList(s));
+  box.innerHTML = Array.from({ length: app.numsMax || 12 }, (_, i) => i + 1).map(n =>
+    `<button class="numb${on.has(n) ? ' on' : ''}" data-action="num-tog" data-n="${n}" aria-pressed="${on.has(n)}">${n}</button>`).join('');
+}
+function numsCfgOpen() {
+  const s = app.session;
+  if (!s || !s.config.trackNums) return;
+  app.numsMax = Math.min(24, Math.max(quiverSize(s), 12, ...numList(s)));
+  $('#edit-body').innerHTML = `
+    <div class="row between">
+      <h2 id="edit-title">Mes flèches du jour</h2>
+      <button class="btn sm icon-only" data-action="close" data-target="dlg-edit" aria-label="Fermer">${icon('x')}</button>
+    </div>
+    <p class="muted" style="margin:0;font-size:13px">Touchez les numéros des flèches que vous tirez aujourd'hui : seuls ceux-là seront proposés.</p>
+    <div class="numrow" id="nums-cfg"></div>
+    <div class="row"><button class="btn" data-action="num-all">Toutes (1 à ${app.numsMax})</button></div>`;
+  numsCfgRender();
+  const dlg = $('#dlg-edit');
+  if (!dlg.open) dlg.showModal();
+}
+function numsSet(s, arr) {
+  s.config.arrowNums = [...new Set(arr)].sort((p, q) => p - q);
+  store.set(NUMS_KEY, s.config.arrowNums);
+  persist();
+  numsCfgRender();
+  renderNumRow();
+}
+function numsToggle(n) {
+  const s = app.session;
+  if (!s) return;
+  const cur = new Set(numList(s));
+  if (cur.has(n)) { if (cur.size <= 1) { toast('Gardez au moins une flèche.'); return; } cur.delete(n); } else cur.add(n);
+  numsSet(s, [...cur]);
+}
+function numsAll() {
+  const s = app.session;
+  if (s) numsSet(s, Array.from({ length: app.numsMax || 12 }, (_, i) => i + 1));
+}
+/* Écouteur propre à ces boutons (phase de capture : les autres écouteurs ne les voient pas). */
+document.addEventListener('click', ev => {
+  const b = ev.target.closest && ev.target.closest('[data-action="num-cfg"],[data-action="num-tog"],[data-action="num-all"]');
+  if (!b) return;
+  ev.preventDefault(); ev.stopImmediatePropagation();
+  const a = b.dataset.action;
+  if (a === 'num-cfg') numsCfgOpen(); else if (a === 'num-tog') numsToggle(+b.dataset.n); else numsAll();
+}, true);
 function renderNumRow() {
   const s = app.session, row = $('#num-row');
   const on = !!(s && s.config.trackNums && !s.finished);
   row.hidden = !on;
   if (!on) return;
   const cur = currentNum(s);
-  $('#num-btns').innerHTML = Array.from({ length: quiverSize(s) }, (_, i) =>
-    `<button class="numb${i + 1 === cur ? ' on' : ''}" data-action="num-pick" data-n="${i + 1}" aria-pressed="${i + 1 === cur}" aria-label="Flèche numéro ${i + 1}">${i + 1}</button>`).join('');
+  $('#num-btns').innerHTML = numList(s).map(n =>
+    `<button class="numb${n === cur ? ' on' : ''}" data-action="num-pick" data-n="${n}" aria-pressed="${n === cur}" aria-label="Flèche numéro ${n}">${n}</button>`).join('') +
+    `<button class="numb cfg" data-action="num-cfg" aria-label="Choisir mes flèches du jour">Mes flèches</button>`;
 }
 
 /* ---------- Saisie des flèches ---------- */
@@ -44,7 +112,7 @@ function addArrow(v, x = null, y = null) {
   if (end.length >= max) return;
 
   const a = { valStr: v, scoreVal: scoreOf(v), x, y };
-  if (s.config.trackNums) { a.n = currentNum(s); app.nextNum = a.n % quiverSize(s) + 1; }
+  if (s.config.trackNums) { a.n = currentNum(s); app.nextNum = nextInList(s, a.n); }
   end.push(a);
   app.pending = null;
   buzz(12);
@@ -309,7 +377,7 @@ function renderPending() {
     `<path d="M${x - 9} ${y}H${+x + 9}M${x} ${y - 9}V${+y + 9}" stroke="#fff" stroke-width="2.2"/>` +
     `<path d="M${x - 9} ${y}H${+x + 9}M${x} ${y - 9}V${+y + 9}" stroke="#111" stroke-width=".8"/>`;
   info.className = '';
-  info.innerHTML = `Zone <span class="zonebadge ${zoneClass(z)}">${z}</span> <span class="muted" style="font-size:13px">${onLine ? 'sur la ligne (flèche de ' + String(sess.config.arrowMm).replace('.', ',') + ' mm) · ' : ''}relâchez pour valider</span>`;
+  info.innerHTML = `Zone <span class="zonebadge ${zoneClass(z)}">${z}</span> <span class="pi-hint"${onLine ? ` title="Flèche de ${String(sess.config.arrowMm).replace('.', ',')} mm : la ligne compte pour la zone supérieure"` : ''}>${onLine ? 'sur la ligne · relâchez' : 'relâchez pour valider'}</span>`;
 }
 
 /* ---------- Modifier une flèche déjà saisie ---------- */
@@ -331,7 +399,7 @@ function openEdit(e, i) {
     </div>
     <p style="margin:0">Valeur actuelle <span class="zonebadge ${zoneClass(a.valStr)}">${a.valStr}</span></p>
     <div class="keypad">${keys}</div>
-    ${s.config.trackNums ? `<div class="lbl">N° de la flèche<div class="numrow" id="edit-nums">${Array.from({ length: Math.max(quiverSize(s), a.n || 0) }, (_, k) => `<button class="numb${a.n === k + 1 ? ' on' : ''}" data-action="edit-num" data-n="${k + 1}" aria-pressed="${a.n === k + 1}">${k + 1}</button>`).join('')}</div></div>` : ''}
+    ${s.config.trackNums ? `<div class="lbl">N° de la flèche<div class="numrow" id="edit-nums">${[...new Set([...numList(s), ...(a.n ? [a.n] : [])])].sort((p, q) => p - q).map(k => `<button class="numb${a.n === k ? ' on' : ''}" data-action="edit-num" data-n="${k}" aria-pressed="${a.n === k}">${k}</button>`).join('')}</div></div>` : ''}
     ${a.x != null ? '<p class="muted" style="margin:0;font-size:13px">Si la nouvelle valeur ne correspond plus à la position de l\'impact, cette position est retirée.</p>' : ''}
     <details>
       <summary class="btn">Replacer sur la cible</summary>
