@@ -196,6 +196,7 @@
       </div>
       <div class="card" id="regularity-card" data-ord="regularite" hidden></div>
       <div class="card" id="nums-card" data-ord="numeros" hidden></div>
+      <div class="card" id="periods-card" data-ord="periodes"></div>
       <div class="card" data-ord="repartition">
         <h3>Répartition des flèches</h3>
         <div id="dist-bars"></div>
@@ -210,6 +211,7 @@
         <div id="records"></div>
       </div>
     </div>
+    <div id="month-card" class="card" data-ord="mois" hidden></div>
     <div id="volume-card" class="card" data-ord="volume" hidden></div>
   </section>
 
@@ -339,6 +341,7 @@
       <button class="btn primary big" id="btn-install" data-action="install"><span data-i="download"></span>Installer l'application</button>
       <p id="install-help" class="muted" style="margin:10px 0 0;font-size:13px">Android (Chrome) : menu ⋮ puis « Installer l'application ». iPhone (Safari) : Partager puis « Sur l'écran d'accueil ».</p>
       <button class="btn big" style="margin-top:12px" data-action="share-app"><span data-i="upload"></span>Partager l'application</button>
+      <button class="btn big" style="margin-top:12px" data-action="qr-open"><span data-i="grid"></span>QR code de l'application</button>
       <button class="btn big" style="margin-top:12px" data-action="refresh-app"><span data-i="undo"></span>Mettre à jour l'application</button>
       <p class="muted" style="margin:8px 0 0;font-size:13px">Version <b id="app-version"></b> · vos séances ne sont pas effacées par la mise à jour.</p>
     </div>
@@ -486,6 +489,18 @@
   </div>
 </dialog>
 
+<dialog id="dlg-qr" aria-labelledby="qr-title">
+  <div class="dlg">
+    <div class="row between">
+      <h2 id="qr-title">QR code de l'application</h2>
+      <button class="btn sm icon-only" data-action="close" data-target="dlg-qr" aria-label="Fermer"><span data-i="x"></span></button>
+    </div>
+    <div id="qr-box"></div>
+    <p class="muted" style="margin:0;font-size:13px;text-align:center">Faites scanner ce code avec l'appareil photo d'un téléphone pour ouvrir le Carnet de Tir Cible.</p>
+    <p id="qr-url" class="muted" style="margin:0;font-size:12px;text-align:center;word-break:break-all"></p>
+  </div>
+</dialog>
+
 <dialog id="dlg-endnotes" aria-labelledby="en-title">
   <div class="dlg">
     <h2 id="en-title">Notes de fin de séance</h2>
@@ -552,6 +567,7 @@
 <script src="js/cartes.js"></script>
 <script src="js/historique.js"></script>
 <script src="js/sauvegarde.js"></script>
+<script src="js/qr.js"></script>
 <script src="js/reglages.js"></script>
 <script src="js/fiches.js"></script>
 <script src="js/ordre.js"></script>

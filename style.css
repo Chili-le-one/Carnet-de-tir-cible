@@ -331,3 +331,6 @@ tr.trial .sc{filter:grayscale(.85)}
 /* Flèches du jour */
 .numb.cfg{padding:0 10px;font-size:13px;font-weight:600;color:var(--muted)}
 #shoot-main.quick #num-row{order:5;flex:1 1 100%;margin:0}
+
+#qr-box{display:flex;justify-content:center}
+#qr-box svg{width:min(280px,100%);height:auto;border-radius:8px}

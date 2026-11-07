@@ -3,8 +3,26 @@
 Historique des versions de l'application. Le numéro de version s'affiche dans **Réglages → Application**.
 Les dates sont celles de la mise à disposition des fichiers.
 
-**Fichiers de l'application :** `index.html`, `app.js`, `style.css`, `themes.css`, `i18n.js`, `sw.js`, `manifest.webmanifest` et trois icônes (`icon-192.png`, `icon-512.png`, `apple-touch-icon.png`).
+**Fichiers de l'application :** `index.html`, `style.css`, `themes.css`, `i18n.js`, `sw.js`, `manifest.webmanifest`, trois icônes (`icon-192.png`, `icon-512.png`, `apple-touch-icon.png`) et le dossier `js/` (voir `STRUCTURE.md`).
 À chaque mise à jour, le numéro de version de `sw.js` est augmenté pour que le téléphone recharge les fichiers.
+
+---
+
+## v26 — 7 novembre 2026
+*Fichiers modifiés : `index.html`, `style.css`, `i18n.js`, `sw.js`, `js/stats.js`, `js/cartes.js`, `js/sauvegarde.js`, `js/fiches.js`, `js/actions.js`, `js/events.js`, `js/ordre.js`. Nouveau : `js/qr.js`.*
+
+### Ajouts
+- **Bilan du mois** (onglet Stats, bloc déplaçable) : séances, flèches, jours de tir, moyenne par flèche, part de 10 et X, concours ★ du mois, détail par distance et blason, meilleure séance (30 flèches minimum). Chaque chiffre est comparé au mois précédent ; les flèches ‹ › permettent de remonter dans les mois. Il ne tient pas compte des filtres de l'onglet et ne compte jamais les volées d'essai.
+- **Comparer deux périodes** (onglet Stats, bloc déplaçable) : deux listes (30 derniers jours, 30 jours précédents, 7 jours, ce mois, mois précédent, 3 derniers mois, 3 mois précédents) et un tableau A / B / écart : séances, flèches, moyenne par flèche, 10 et X, manqués, et groupement et justesse en cm quand les impacts sont assez nombreux. Les filtres Distance / Blason / Arc s'appliquent aux deux périodes ; des avertissements signalent les formats mélangés et le peu de flèches.
+- **Comparaison de deux volées** (Stats → Cartographie par volée) : en touchant exactement deux volées, un tableau donne leur moyenne par flèche, leur total (pour une séance), leur justesse, leur groupement, l'écart entre les deux et la distance entre leurs points moyens.
+- **QR code de l'application** (Réglages → Application) : affiche l'adresse en ligne de l'appli sous forme de QR code, à faire scanner. Généré dans l'appli (`js/qr.js`), donc sans réseau ni bibliothèque ; disponible depuis la version en ligne seulement.
+- Traduction anglaise de tous les nouveaux textes.
+
+### Modifications
+- **Les fiches de réglage sont maintenant dans les sauvegardes** : fichier de sauvegarde, copie du texte, téléchargement automatique et copies automatiques contiennent les séances **et** les fiches. À la restauration ou à l'import, les fiches et variantes manquantes sont ajoutées, sans rien écraser. Sans fiche, le fichier garde l'ancien format (simple liste de séances) ; les anciennes sauvegardes restent importables.
+
+### Corrections
+- Documentation : `CHANGELOG.md` citait encore `app.js` (supprimé en v23). `sw.js` est de nouveau à la racine du dossier (il se trouvait dans `js/` dans le dossier v25, alors que `index.html` le charge à la racine).
 
 ---
 
@@ -180,9 +198,10 @@ Reprise complète de l'application d'origine, renommée **Carnet de Tir Cible**,
 ---
 
 ## Pistes envisagées (non réalisées)
-- Mode « réglage fin » de la loupe (le viseur bouge moins vite que le doigt).
 - Détection des tirs et estimation de la vitesse des flèches avec le micro d'une oreillette Bluetooth.
-- QR code pour faire connaître l'application.
-- Séance de groupement sans score, comparaison de deux périodes, séance en plusieurs distances.
-- Raccourci sur l'icône (« Nouvelle séance »), taille du texte réglable.
+- Séance de groupement sans score, séance en plusieurs distances.
+- Taille du texte réglable.
 - Thème « Plein soleil » (contraste maximal), approuvé mais mis de côté.
+
+### Écartées
+- Raccourci sur l'icône (« Nouvelle séance »), mode « réglage fin » de la loupe : jugés inutiles.
