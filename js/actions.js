@@ -25,7 +25,7 @@ function setMode(m) {
 
 /* ---------- Actions (délégation d'événements) ---------- */
 
-const APP_VERSION = 'v25 · 6 nov. 2026';
+const APP_VERSION = 'v26 · 7 nov. 2026';
 let deferredInstall = null;
 
 const actions = {
@@ -48,6 +48,9 @@ const actions = {
   'restore-open': () => { renderCopies(); $('#dlg-restore').showModal(); },
   'copies-clear': () => clearCopies(),
   'share-app': () => shareApp(),
+  'qr-open': () => qrOpen(),
+  'month-prev': () => monthMove(-1),
+  'month-next': () => monthMove(1),
   'ord-start': d => startReorder(d.tab),
   'ord-move': (d, b) => moveBlock(app.reorder, b.closest('.ord-bar').dataset.for, +d.dir),
   'ord-end': () => endReorder(),

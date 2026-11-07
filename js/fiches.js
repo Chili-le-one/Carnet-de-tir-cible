@@ -11,6 +11,23 @@ const sheetKey = (sh, v) => `${sh.id}|${v.id}`;
 const sortedVariants = sh => [...sh.variants].sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
 const fmtMm = v => String(v).replace('.', ',');
 
+/* Fusion de fiches venant d'une sauvegarde : on ajoute ce qui manque (fiches et variantes), sans rien écraser. */
+function mergeSheets(incoming) {
+  if (!Array.isArray(incoming)) return 0;
+  const list = getSheets();
+  let added = 0;
+  incoming.forEach(raw => {
+    if (!raw || !raw.id || typeof raw.bow !== 'string' || !Array.isArray(raw.variants)) return;
+    const vs = raw.variants.filter(v => v && v.id && v.date);
+    if (!vs.length) return;
+    let sh = list.find(x => x.id === raw.id);
+    if (!sh) { sh = { id: String(raw.id), bow: raw.bow.slice(0, 40), variants: [] }; list.push(sh); }
+    vs.forEach(v => { if (!sh.variants.some(x => x.id === v.id)) { sh.variants.push(v); added++; } });
+  });
+  if (added) saveSheets(list);
+  return added;
+}
+
 function findVariant(key) {
   if (!key) return null;
   const [sid, vid] = String(key).split('|');

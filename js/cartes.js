@@ -18,8 +18,25 @@ function endStatsFor(list) {
     });
   });
   return [...m.entries()].filter(([, g]) => g.pts.length).sort((a, b) => a[0] - b[0]).map(([i, g]) => ({
-    i, pts: g.pts, b: biasOf(g.pts), avg: g.scores.reduce((x, y) => x + y, 0) / g.scores.length
+    i, pts: g.pts, b: biasOf(g.pts), n: g.scores.length, sum: g.scores.reduce((x, y) => x + y, 0), avg: g.scores.reduce((x, y) => x + y, 0) / g.scores.length
   }));
+}
+
+/* Comparaison de deux volées (celles que l'on a touchées) : moyenne, total, justesse, groupement. */
+function compareEnds(a, b, all) {
+  const sg = (v, dec) => (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v).toFixed(dec);
+  const dir = e => { const dx = e.b.mx * e.b.k, dy = e.b.my * e.b.k; return `${dx < 0 ? '←' : '→'} ${Math.abs(dx).toFixed(1)} · ${dy < 0 ? '↑' : '↓'} ${Math.abs(dy).toFixed(1)}`; };
+  const gap = Math.hypot(a.b.mx - b.b.mx, a.b.my - b.b.my) * (a.b.k + b.b.k) / 2;
+  const row = (l, x, y, d) => `<tr><td>${l}</td><td>${x}</td><td>${y}</td><td><b>${d}</b></td></tr>`;
+  return `<div style="margin:0 0 10px"><h3 style="margin:0 0 6px">Comparaison de deux volées</h3>
+    <div class="table-wrap"><table><thead><tr><th></th><th>V${a.i + 1}</th><th>V${b.i + 1}</th><th>Écart</th></tr></thead><tbody>
+      ${row('Moyenne par flèche', a.avg.toFixed(2), b.avg.toFixed(2), sg(b.avg - a.avg, 2))}
+      ${all ? '' : row('Total', a.sum, b.sum, sg(b.sum - a.sum, 0))}
+      ${row('Justesse (cm)', dir(a), dir(b), '')}
+      ${row('Groupement (cm)', a.b.disp.toFixed(1), b.b.disp.toFixed(1), sg(b.b.disp - a.b.disp, 1))}
+    </tbody></table></div>
+    <p style="margin:8px 0 0;font-weight:650">Distance entre les deux points moyens : ${gap.toFixed(1)} cm.</p>
+    <p class="muted" style="margin:4px 0 0;font-size:13px">Écart : seconde volée moins première. Groupement : plus petit = plus serré.</p></div>`;
 }
 
 function renderEndsCard() {
@@ -52,6 +69,7 @@ function renderEndsCard() {
     [...withPts].sort((a, b) => new Date(b.date) - new Date(a.date)).map(x =>
       `<option value="${esc(x.id)}"${x.id === app.endsSession ? ' selected' : ''}>${esc(fmtDate(x.date, true))} · ${esc(x.config.distance)} · ${sessionStats(x).total} pts</option>`).join('');
 
+  const picked = eps.filter(e => app.endsSel.has(e.i));
   const chips = eps.map((e, j) =>
     `<button class="endchip" style="--c:${color(j)}" data-action="end-toggle" data-e="${e.i}" aria-pressed="${app.endsSel.has(e.i)}" aria-label="Volée ${e.i + 1}">${e.i + 1}</button>`).join('');
 
@@ -71,6 +89,7 @@ function renderEndsCard() {
     </div>
     <div class="chips">${chips}</div>
     ${eps.length > 1 ? `<p style="margin:0 0 8px;font-weight:650">Écart maximal entre deux volées : ${spread.toFixed(1)} cm</p>` : ''}
+    ${picked.length === 2 ? compareEnds(picked[0], picked[1], all) : '<p class="muted" style="margin:0 0 10px;font-size:13px">Pour comparer deux volées, touchez-en exactement deux.</p>'}
     <div class="table-wrap"><table>
       <thead><tr><th>Volée</th><th>Moy.</th><th>Justesse (cm)</th><th>Groupement (cm)</th></tr></thead>
       <tbody>${rows}</tbody>

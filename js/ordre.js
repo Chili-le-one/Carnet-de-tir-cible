@@ -6,7 +6,7 @@
 const ORD_LABELS = {
   statut: 'Résumé', volee: 'Volée en cours', minuteur: 'Minuteur', mode: 'Boutons Clavier / Cible', saisie: 'Saisie des flèches', notes: 'Notes de la séance', feuille: 'Feuille de marque',
   kpis: 'Chiffres clés', objectif: 'Objectif', evolution: 'Évolution', regularite: 'Régularité', repartition: 'Répartition', numeros: 'Numéros de flèches',
-  carte: 'Carte des impacts', volees: 'Cartographie par volée', records: 'Records', volume: "Volume d'entraînement"
+  carte: 'Carte des impacts', volees: 'Cartographie par volée', records: 'Records', volume: "Volume d'entraînement", mois: 'Bilan du mois', periodes: 'Comparaison de périodes'
 };
 const ordRoot = tab => tab === 'stats' ? $('#tab-stats') : $('#shoot-main');
 const ordBlocks = tab => $$('[data-ord]', ordRoot(tab));

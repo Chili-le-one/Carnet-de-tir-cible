@@ -265,9 +265,115 @@ function renderNumbers(data) {
     <p class="muted" style="margin:8px 0 0;font-size:13px">Volées comptées seulement. Les écarts ne deviennent lisibles qu'à partir d'une dizaine de tirs par numéro. Groupement : rayon moyen autour du centre des impacts du numéro, affiché pour une seule distance et un seul blason (utilisez les filtres).</p>`;
 }
 
+/* ---------- Bilan du mois et comparaison de périodes ---------- */
+const sgn = (v, dec) => (v > 0 ? '+' : v < 0 ? '−' : '±') + Math.abs(v).toFixed(dec);
+const monthAt = off => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + off, 1); };
+
+/* Chiffres d'un ensemble de séances (volées comptées seulement, jamais les essais). */
+function periodSummary(list) {
+  const r = { ses: 0, n: 0, sum: 0, tens: 0, miss: 0, days: new Set(), groups: {}, best: null, pts: [] };
+  list.forEach(x => {
+    const st = sessionStats(x);
+    if (!st.count) return;
+    r.ses++; r.n += st.count; r.sum += st.total;
+    r.tens += st.arrows.filter(a => a.valStr === '10' || a.valStr === 'X').length;
+    r.miss += st.arrows.filter(a => a.valStr === 'M').length;
+    r.days.add(new Date(x.date).toDateString());
+    const key = goalKey(x.config), g = r.groups[key] = r.groups[key] || { c: x.config, n: 0, sum: 0 };
+    g.n += st.count; g.sum += st.total;
+    if (st.count >= RECORD_MIN && (!r.best || st.avg > r.best.st.avg)) r.best = { x, st };
+    const k = cmPerUnit(x.config);
+    st.arrows.forEach(a => { if (a.x != null && a.y != null) r.pts.push({ x: a.x, y: a.y, k }); });
+  });
+  r.avg = r.n ? r.sum / r.n : 0;
+  return r;
+}
+const sessionsBetween = (list, from, to) => list.filter(x => { const t = +new Date(x.date); return t >= from && t < to; });
+
+let monthOff = 0;   // 0 = mois en cours, −1 = mois précédent…
+function monthMove(d) { monthOff += d; renderMonth(); }
+
+function renderMonth() {
+  const card = $('#month-card');
+  card.hidden = !app.sessions.length;
+  if (!app.sessions.length) return;
+  const now = new Date(), first = new Date(Math.min(...app.sessions.map(x => +new Date(x.date))));
+  const minOff = (first.getFullYear() - now.getFullYear()) * 12 + first.getMonth() - now.getMonth();
+  monthOff = Math.max(minOff, Math.min(0, monthOff));
+  const from = monthAt(monthOff), to = monthAt(monthOff + 1);
+  const cur = periodSummary(sessionsBetween(app.sessions, +from, +to));
+  const prev = periodSummary(sessionsBetween(app.sessions, +monthAt(monthOff - 1), +from));
+  const label = from.toLocaleDateString(window.__LOCALE || 'fr-FR', { month: 'long', year: 'numeric' });
+  const ym = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, '0')}`;
+  const contests = store.get(KEYS.contests, []).filter(c => c && String(c.date).slice(0, 7) === ym).length;
+  const pct = r => Math.round(r.tens / r.n * 100);
+  const vs = (c, p, dec, show) => prev.n && show ? `<div class="muted" style="font-size:12px">${sgn(c - p, dec)} <span>vs mois préc.</span></div>` : '';
+  const mini = (dt, dd, sub) => `<div class="mini"><dt>${dt}</dt><dd>${dd}</dd>${sub || ''}</div>`;
+  const groups = Object.values(cur.groups).sort((a, b) => b.n - a.n).slice(0, 4);
+  const body = !cur.n ? '<p class="muted" style="margin:8px 0 0">Aucune flèche tirée ce mois-là.</p>' : `
+    <div class="minis" style="grid-template-columns:repeat(3,1fr)">
+      ${mini('Séances', cur.ses, vs(cur.ses, prev.ses, 0, true))}
+      ${mini('Flèches', cur.n, vs(cur.n, prev.n, 0, true))}
+      ${mini('Jours de tir', cur.days.size, vs(cur.days.size, prev.days.size, 0, true))}
+      ${mini('Moy. par flèche', cur.avg.toFixed(2), vs(cur.avg, prev.avg, 2, cur.n >= 12 && prev.n >= 12))}
+      ${mini('10 et X', pct(cur) + '%', prev.n >= 12 && cur.n >= 12 ? `<div class="muted" style="font-size:12px">${sgn(pct(cur) - pct(prev), 0)} <span>pts vs mois préc.</span></div>` : '')}
+      ${contests ? mini('Concours', contests) : ''}
+    </div>
+    <p class="muted" style="margin:10px 0 4px;font-size:13px">Par distance et blason</p>
+    ${groups.map(g => `<div class="rec"><div><b>${esc(g.c.distance)} · ${esc(targetLabel(g.c.targetType))}</b><div class="muted" style="font-size:13px">${g.n} flèches · moy. ${(g.sum / g.n).toFixed(2)}</div></div></div>`).join('')}
+    ${cur.best ? `<p style="margin:10px 0 0"><b>Meilleure séance</b> <span>${fmtDate(cur.best.x.date)} · ${esc(cur.best.x.config.distance)} · ${esc(targetLabel(cur.best.x.config.targetType))} · ${cur.best.st.total} pts</span></p>` : ''}
+    <p class="muted" style="margin:8px 0 0;font-size:13px">Meilleure moyenne par flèche parmi les séances d'au moins ${RECORD_MIN} flèches. Moyennes tous formats confondus.</p>`;
+  card.innerHTML = `<div class="row between"><h3 style="margin:0">Bilan du mois</h3><span class="row">
+      <button class="btn sm icon-only" data-action="month-prev" aria-label="Mois précédent"${monthOff <= minOff ? ' disabled' : ''}>‹</button>
+      <button class="btn sm icon-only" data-action="month-next" aria-label="Mois suivant"${monthOff >= 0 ? ' disabled' : ''}>›</button></span></div>
+    <p style="margin:6px 0 0;font-weight:650;text-transform:capitalize">${esc(label)}</p>${body}`;
+}
+
+/* Comparaison de deux périodes (les filtres Distance / Blason / Arc s'appliquent aux deux). */
+const PERIODS = [['30', '30 derniers jours'], ['p30', '30 jours précédents'], ['7', '7 derniers jours'], ['p7', '7 jours précédents'],
+  ['m0', 'Ce mois'], ['m1', 'Mois précédent'], ['q0', '3 derniers mois'], ['q1', '3 mois précédents']];
+let cmpA = '30', cmpB = 'p30';
+function periodRange(k) {
+  const end = new Date(); end.setHours(24, 0, 0, 0);
+  const E = +end, D = 864e5;
+  return { 30: [E - 30 * D, E], p30: [E - 60 * D, E - 30 * D], 7: [E - 7 * D, E], p7: [E - 14 * D, E - 7 * D],
+    m0: [+monthAt(0), +monthAt(1)], m1: [+monthAt(-1), +monthAt(0)], q0: [+monthAt(-2), +monthAt(1)], q1: [+monthAt(-5), +monthAt(-2)] }[k];
+}
+function periodsChange() { cmpA = $('#p-a').value; cmpB = $('#p-b').value; renderPeriods(app.statsData || []); }
+
+function renderPeriods(data) {
+  const card = $('#periods-card');
+  const sum = k => { const [a, b] = periodRange(k); return periodSummary(sessionsBetween(data, a, b)); };
+  const A = sum(cmpA), B = sum(cmpB), both = A.n > 0 && B.n > 0;
+  const sel = (id, v) => `<select id="${id}">${PERIODS.map(([k, l]) => `<option value="${k}"${k === v ? ' selected' : ''}>${l}</option>`).join('')}</select>`;
+  const oneFace = new Set(data.map(x => goalKey(x.config))).size === 1;
+  const geo = oneFace && A.pts.length >= 12 && B.pts.length >= 12 ? { a: biasOf(A.pts), b: biasOf(B.pts) } : null;
+  const pc = r => r.n ? Math.round(r.tens / r.n * 100) : 0, mc = r => r.n ? Math.round(r.miss / r.n * 100) : 0;
+  const row = (label, a, b, d) => `<tr><td>${label}</td><td>${a}</td><td>${b}</td><td><b>${d}</b></td></tr>`;
+  const pcell = (r, f) => r.n ? f(r) + '%' : '–';
+  const rows = [
+    row('Séances', A.ses, B.ses, both ? sgn(A.ses - B.ses, 0) : '–'),
+    row('Flèches', A.n, B.n, both ? sgn(A.n - B.n, 0) : '–'),
+    row('Moyenne par flèche', A.n ? A.avg.toFixed(2) : '–', B.n ? B.avg.toFixed(2) : '–', both ? sgn(A.avg - B.avg, 2) : '–'),
+    row('10 et X', pcell(A, pc), pcell(B, pc), both ? sgn(pc(A) - pc(B), 0) : '–'),
+    row('Manqués', pcell(A, mc), pcell(B, mc), both ? sgn(mc(A) - mc(B), 0) : '–'),
+    geo ? row('Groupement (cm)', geo.a.disp.toFixed(1), geo.b.disp.toFixed(1), sgn(geo.a.disp - geo.b.disp, 1)) : '',
+    geo ? row('Justesse (cm)', geo.a.dist.toFixed(1), geo.b.dist.toFixed(1), sgn(geo.a.dist - geo.b.dist, 1)) : ''
+  ].join('');
+  card.innerHTML = `<h3 style="margin-bottom:8px">Comparer deux périodes</h3>
+    <div class="filters"><label>Période A${sel('p-a', cmpA)}</label><label>Période B${sel('p-b', cmpB)}</label></div>
+    <div class="table-wrap" style="margin-top:10px"><table><thead><tr><th></th><th>A</th><th>B</th><th>Écart</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="muted" style="margin:8px 0 0;font-size:13px">Écart : période A moins période B. Les filtres ci-dessus s'appliquent aux deux périodes.</p>
+    ${both && !oneFace ? '<p class="muted" style="margin:6px 0 0;font-size:13px">Plusieurs formats mélangés : choisissez une distance et un blason pour comparer des scores comparables.</p>' : ''}
+    ${both && (A.n < RECORD_MIN || B.n < RECORD_MIN) ? '<p class="muted" style="margin:6px 0 0;font-size:13px">Peu de flèches dans une des périodes : prudence avec les écarts.</p>' : ''}
+    ${geo ? '<p class="muted" style="margin:6px 0 0;font-size:13px">Groupement et justesse : plus petit = plus précis.</p>' : ''}
+    <p class="muted" style="margin:6px 0 0;font-size:13px">Comparaison de chiffres observés : un écart ne dit pas ce qui l'explique.</p>`;
+}
+
 function renderStats() {
   fillFilters();
   renderVolume();
+  renderMonth();
   const d = $('#f-dist').value, t = $('#f-target').value, bw = $('#f-bow').value;
   const data = app.sessions.filter(s => (d === 'ALL' || s.config.distance === d) && (t === 'ALL' || String(s.config.targetType) === t) && (bw === 'ALL' || s.bow === bw));
   $('#stats-empty').hidden = data.length > 0;
@@ -323,6 +429,7 @@ function renderStats() {
   $('#evo-gear').innerHTML = shown.map(m => `<div class="muted" style="font-size:13px;margin-top:4px"><b style="color:var(--ink)">${m.n}</b> · ${esc(fmtDate(m.g.date + 'T12:00:00'))} — ${esc(m.g.text)}</div>`).join('');
   renderRegularity(data);
   renderNumbers(data);
+  renderPeriods(data);
 
   // Répartition
   const colors = { '10 et X': 'var(--gold)', '9': 'var(--gold)', '8': 'var(--red)', '7': 'var(--red)', '6': 'var(--blue)', '5 à 1': '#6b7686', 'M': 'var(--danger)' };

@@ -59,6 +59,10 @@ function bindEvents() {
       renderImpactMap();
       return;
     }
+    if (e.target.id === 'p-a' || e.target.id === 'p-b') {
+      periodsChange();
+      return;
+    }
     if (e.target.id === 'e-session') {
       app.endsSession = e.target.value;
       app.endsSel.clear();

@@ -21,9 +21,17 @@ function renderBackupBanner() {
     ? `Dernière sauvegarde : ${fmtDate(b.date, true)}${unsaved ? ` (${unsaved} séance${unsaved > 1 ? 's' : ''} depuis)` : ''}.`
     : 'Aucune sauvegarde effectuée pour l’instant.';
 }
+/* Contenu d'une sauvegarde : les séances, plus les fiches de réglage s'il y en a.
+   Sans fiche, on garde l'ancien format (un simple tableau de séances). */
+function backupData() {
+  const sheets = getSheets();
+  return sheets.length ? { app: 'carnet-tir-cible', sessions: app.sessions, sheets } : app.sessions;
+}
+const backupJson = pretty => JSON.stringify(backupData(), null, pretty ? 2 : 0);
+
 async function shareBackup() {
   if (!app.sessions.length) { toast('Aucune séance à sauvegarder.'); return; }
-  const file = new File([JSON.stringify(app.sessions, null, 2)], `carnet_tir_cible_${today()}.json`, { type: 'application/json' });
+  const file = new File([backupJson(true)], `carnet_tir_cible_${today()}.json`, { type: 'application/json' });
   try {
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       await navigator.share({ files: [file], title: t('Sauvegarde Carnet de Tir Cible') });
@@ -47,7 +55,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 function exportJSON() {
   if (!app.sessions.length) { toast('Aucune séance à exporter.'); return; }
-  download(`carnet_tir_cible_${today()}.json`, JSON.stringify(app.sessions, null, 2), 'application/json');
+  download(`carnet_tir_cible_${today()}.json`, backupJson(true), 'application/json');
   markBackedUp();
 }
 function exportCSV() {
@@ -76,8 +84,14 @@ function importFromText(text) {
   let data;
   try { data = JSON.parse(String(text).replace(/^\uFEFF/, '').trim()); }
   catch (e) { say("Texte illisible : ce n'est pas une sauvegarde JSON valide.", true); return; }
-  if (data && !Array.isArray(data)) data = Array.isArray(data.sessions) ? data.sessions : [data];
-  if (!Array.isArray(data) || !data.length) { say('Aucune séance trouvée dans cette sauvegarde.', true); return; }
+  let sheetsIn = null;
+  if (data && !Array.isArray(data)) {
+    sheetsIn = Array.isArray(data.sheets) ? data.sheets : null;
+    data = Array.isArray(data.sessions) ? data.sessions : (sheetsIn ? [] : [data]);
+  }
+  if (!Array.isArray(data) || (!data.length && !sheetsIn)) { say('Aucune séance trouvée dans cette sauvegarde.', true); return; }
+  const sheetsAdded = sheetsIn ? mergeSheets(sheetsIn) : 0;
+  if (sheetsAdded) { renderSheets(); renderSheetSelect(); }
 
   const known = new Set(app.sessions.map(x => x.id));
   const fresh = []; let dup = 0, bad = 0;
@@ -98,10 +112,12 @@ function importFromText(text) {
     app.sessions = [...app.sessions, ...fresh].sort((x, y) => new Date(y.date) - new Date(x.date));
     saveSessions();
   }
-  const parts = [`${fresh.length} séance${fresh.length > 1 ? 's' : ''} importée${fresh.length > 1 ? 's' : ''}`];
+  const parts = [];
+  if (fresh.length || !sheetsAdded) parts.push(`${fresh.length} séance${fresh.length > 1 ? 's' : ''} importée${fresh.length > 1 ? 's' : ''}`);
   if (dup) parts.push(`${dup} déjà présente${dup > 1 ? 's' : ''}`);
   if (bad) parts.push(`${bad} ignorée${bad > 1 ? 's' : ''} (format inconnu)`);
-  say(parts.join(', ') + '.', !fresh.length && bad > 0);
+  const sheetMsg = sheetsAdded ? `${sheetsAdded} variante${sheetsAdded > 1 ? 's' : ''} de fiche ajoutée${sheetsAdded > 1 ? 's' : ''}.` : '';
+  say((parts.length ? parts.join(', ') + '.' + (sheetMsg ? ' ' : '') : '') + sheetMsg, !fresh.length && !sheetsAdded && bad > 0);
   if (fresh.length) $('#paste-json').value = '';
 }
 function importJSON(file) {
@@ -112,7 +128,7 @@ function importJSON(file) {
 }
 async function copyJSON() {
   if (!app.sessions.length) { toast('Aucune séance à copier.'); return; }
-  const txt = JSON.stringify(app.sessions);
+  const txt = backupJson(false);
   try { await navigator.clipboard.writeText(txt); markBackedUp(); toast('Séances copiées : collez-les où vous voulez les garder.'); }
   catch (e) {
     const ta = $('#paste-json'); ta.value = txt; ta.focus(); ta.select();
@@ -150,12 +166,12 @@ async function copiesAll() {
 /* À appeler AVANT le changement : l'état est figé tout de suite, l'écriture se fait ensuite. */
 async function copySave(reason) {
   if (!app.sessions.length) return;
-  const data = JSON.stringify(app.sessions), count = app.sessions.length;
+  const data = JSON.stringify(app.sessions), count = app.sessions.length, sheets = getSheets();
   try {
     const old = await copiesAll();
     const db = await idbOpen();
     const os = db.transaction('copies', 'readwrite').objectStore('copies');
-    os.put({ ts: Math.max(Date.now(), old.length ? old[0].ts + 1 : 0), reason, count, data });
+    os.put({ ts: Math.max(Date.now(), old.length ? old[0].ts + 1 : 0), reason, count, data, sheets });
     old.slice(7).forEach(c => os.delete(c.ts));
   } catch (e) {}
 }
@@ -178,6 +194,7 @@ async function restoreCopy(ts) {
   await copySave('avant restauration');
   app.sessions = data.map(x => Object.assign(x, { finished: true }));
   saveSessions();
+  if (c.sheets && mergeSheets(c.sheets)) { renderSheets(); renderSheetSelect(); }   // les fiches de la copie sont ajoutées à celles de l'appareil
   if (app.session && app.session.finished) setSession(null);
   $('#dlg-restore').close();
   renderHistory();
@@ -190,7 +207,7 @@ async function clearCopies() {
 }
 function autoDownload() {
   const d = new Date(), hm = String(d.getHours()).padStart(2, '0') + String(d.getMinutes()).padStart(2, '0');
-  download(`carnet_tir_cible_${today()}_${hm}.json`, JSON.stringify(app.sessions, null, 2), 'application/json');
+  download(`carnet_tir_cible_${today()}_${hm}.json`, backupJson(true), 'application/json');
   markBackedUp();
 }
 
