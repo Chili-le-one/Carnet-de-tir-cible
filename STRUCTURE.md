@@ -22,6 +22,7 @@ Aucun fichier n'a besoin d'être compilé : on met tout le dossier en ligne tel 
 | `stats.js` | Onglet Stats : filtres, objectif, records, régularité, numéros de flèches, volume, bilan du mois, comparaison de périodes | 30 Ko |
 | `cartes.js` | Onglet Stats : carte des impacts, ellipse, cartographie par volée, comparaison de deux volées | 13 Ko |
 | `historique.js` | Onglet Historique : liste et calendrier | 8 Ko |
+| `concours.js` | Saisie d'un score de concours sans la cible : score final seul (`s.manual`) ou toutes les flèches au clavier | 7 Ko |
 | `sauvegarde.js` | Rappel, export/import (séances + fiches), copies automatiques, partage | 11 Ko |
 | `qr.js` | Générateur de QR code (hors ligne) et fenêtre « QR code de l'application » | 8 Ko |
 | `reglages.js` | Réglages : profil, préférences, matériel | 3 Ko |
@@ -54,3 +55,7 @@ Les fichiers de `js/` sont des scripts classiques : ils partagent leurs variable
 ## Données ajoutées en v26
 - Sauvegarde JSON : si des fiches existent, le fichier est un objet `{ app, sessions, sheets }` (sinon un simple tableau de séances, comme avant). L'import accepte les deux formats, et un objet ne contenant que `sheets`. Les copies automatiques (IndexedDB) ont un champ `sheets` en plus de `data`.
 - Aucune nouvelle clé de stockage : le bilan du mois et la comparaison de périodes sont calculés à partir des séances.
+
+## Données ajoutées en v27
+- `s.contest = { name }` : séance saisie comme concours (fenêtre « Score de concours »). Le jour est aussi ajouté à `carnet_tir_concours` (étoile du calendrier).
+- `s.manual = { total, tens, xs }` : concours saisi par son score final seul ; `s.ends` est alors vide et `sessionStats()` (core.js) lit ce total. Si les flèches sont saisies, la séance est une séance normale (`s.ends`).

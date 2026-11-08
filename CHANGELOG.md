@@ -8,6 +8,25 @@ Les dates sont celles de la mise à disposition des fichiers.
 
 ---
 
+## v27 — 8 novembre 2026
+*Fichiers modifiés : `index.html`, `sw.js`, `STRUCTURE.md`, `js/core.js`, `js/actions.js`, `js/historique.js`. Nouveau : `js/concours.js`.*
+
+### Ajouts
+- **Saisie d'un score de concours, sans la cible.** Bouton « Saisir un score de concours » dans la fenêtre *Nouvelle séance* et en haut de l'onglet *Historique*. On indique la date, le nom du concours (facultatif), la distance, le blason, le nombre de flèches par volée et le nombre de volées, puis au choix :
+  - **Score final** : le total, plus le nombre de 10 et de X si on le souhaite (contrôlé par rapport au maximum possible) ;
+  - **Toutes les flèches** : une grille volée par volée avec un clavier (X, 10 à 1, M), passage automatique à la case suivante, sous-total par volée et total cumulé. La séance est alors une séance normale (bilan, export, etc.).
+- Le jour du concours est marqué ★ dans le calendrier et le nom du concours apparaît dans l'historique.
+- Un concours saisi par son score final a un bouton **Modifier** dans l'historique (à la place de « Consulter »).
+
+### Modifications
+- Données : `s.contest = { name }` pour toute séance saisie comme concours ; `s.manual = { total, tens, xs }` pour un score final seul (`s.ends` est alors vide, `sessionStats()` lit ce total). Détail dans `STRUCTURE.md`.
+
+### À noter
+- Un concours en score final compte comme une séance sans détail de flèches : il apparaît dans l'historique, mais n'alimente ni les cartes d'impacts ni la régularité. Les autres statistiques (`js/stats.js`) n'ont pas été relues dans cette version.
+- Les textes de la fenêtre de concours ne sont pas encore traduits en anglais (`i18n.js`).
+
+---
+
 ## v26 — 7 novembre 2026
 *Fichiers modifiés : `index.html`, `style.css`, `i18n.js`, `sw.js`, `js/stats.js`, `js/cartes.js`, `js/sauvegarde.js`, `js/fiches.js`, `js/actions.js`, `js/events.js`, `js/ordre.js`. Nouveau : `js/qr.js`.*
 

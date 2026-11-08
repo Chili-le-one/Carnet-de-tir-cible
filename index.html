@@ -217,6 +217,7 @@
 
   <!-- ============ HISTORIQUE ============ -->
   <section id="tab-history" hidden>
+    <button class="btn" style="margin-bottom:10px" data-action="contest-open"><span data-i="flag"></span>Saisir un score de concours</button>
     <div class="card" id="cal-card"></div>
     <div id="history-list"></div>
   </section>
@@ -408,6 +409,8 @@
 
     <p id="setup-profile" class="muted" style="margin:-6px 0 0;font-size:13px" hidden></p>
 
+    <button class="btn" data-action="contest-open"><span data-i="flag"></span>Saisir un score de concours</button>
+
     <div id="resume-box" class="notice" hidden>
       <div><b>Séance en cours</b><div id="resume-info" class="muted"></div></div>
       <div class="row">
@@ -470,6 +473,47 @@
       </div>
     </details>
     <button class="btn primary big" data-action="start"><span data-i="check"></span>Démarrer la séance</button>
+  </div>
+</dialog>
+
+<!-- ============ SCORE DE CONCOURS ============ -->
+<dialog id="dlg-contest" aria-labelledby="ct-title">
+  <div class="dlg">
+    <div class="row between">
+      <h2 id="ct-title">Score de concours</h2>
+      <button class="btn sm icon-only" data-action="close" data-target="dlg-contest" aria-label="Fermer"><span data-i="x"></span></button>
+    </div>
+    <div class="two">
+      <label>Date<input id="ct-date" type="date"></label>
+      <label>Nom du concours (facultatif)<input id="ct-name" maxlength="60" autocomplete="off"></label>
+    </div>
+    <div class="two">
+      <label>Distance<select id="ct-distance"></select></label>
+      <label>Blason<select id="ct-target"></select></label>
+    </div>
+    <label id="ct-custom-wrap" hidden>Distance personnalisée<input id="ct-custom" placeholder="ex. 40 m" autocomplete="off"></label>
+    <div class="two">
+      <label>Flèches par volée<select id="ct-ape"></select></label>
+      <label>Nombre de volées<input id="ct-ends" type="number" inputmode="numeric" min="1" max="60" value="10"></label>
+    </div>
+    <div id="ct-mode" class="seg" role="group" aria-label="Type de saisie">
+      <button data-action="ct-mode" data-m="total" aria-pressed="true">Score final</button>
+      <button data-action="ct-mode" data-m="arrows" aria-pressed="false">Toutes les flèches</button>
+    </div>
+    <div id="ct-total-box">
+      <label>Score final<input id="ct-total" type="number" inputmode="numeric" min="0" placeholder="ex. 540"></label>
+      <div class="two">
+        <label>Nombre de 10 (facultatif)<input id="ct-tens" type="number" inputmode="numeric" min="0"></label>
+        <label>dont X (facultatif)<input id="ct-xs" type="number" inputmode="numeric" min="0"></label>
+      </div>
+    </div>
+    <div id="ct-arrows-box" hidden>
+      <div id="ct-sum"></div>
+      <div id="ct-grid"></div>
+      <div id="ct-keys" class="keypad" role="group" aria-label="Valeur de la flèche"></div>
+      <button class="btn sm" style="margin-top:8px" data-action="ct-key" data-v="">Effacer cette flèche</button>
+    </div>
+    <button class="btn primary big" data-action="ct-save"><span data-i="check"></span>Enregistrer</button>
   </div>
 </dialog>
 
@@ -566,6 +610,7 @@
 <script src="js/stats.js"></script>
 <script src="js/cartes.js"></script>
 <script src="js/historique.js"></script>
+<script src="js/concours.js"></script>
 <script src="js/sauvegarde.js"></script>
 <script src="js/qr.js"></script>
 <script src="js/reglages.js"></script>
