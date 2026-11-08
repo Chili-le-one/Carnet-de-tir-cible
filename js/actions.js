@@ -25,7 +25,7 @@ function setMode(m) {
 
 /* ---------- Actions (délégation d'événements) ---------- */
 
-const APP_VERSION = 'v26 · 7 nov. 2026';
+const APP_VERSION = 'v27 · 8 nov. 2026';
 let deferredInstall = null;
 
 const actions = {
@@ -39,6 +39,12 @@ const actions = {
   'timer-hide': () => { store.set(KEYS.prefs, Object.assign({}, getPrefs(), { timer: false })); timerRender(); toast('Minuteur masqué : réaffichez-le dans Réglages ou en mode Disposition.'); },
   'timer-toggle': () => timerToggle(),
   'timer-reset': () => timerReset(),
+  'contest-open': () => contestOpen(),
+  'contest-edit': d => contestOpen(d.id),
+  'ct-mode': d => { ct.mode = d.m; ctRender(); },
+  'ct-cell': d => { ct.sel = { e: +d.e, i: +d.i }; ctRenderGrid(); },
+  'ct-key': d => ctKey(d.v),
+  'ct-save': () => ctSave(),
   'cal-prev': () => calMove(-1),
   'cal-next': () => calMove(1),
   'cal-day': d => { app.cal.sel = d.d; renderCalendar(); },

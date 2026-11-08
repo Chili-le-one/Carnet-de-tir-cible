@@ -34,11 +34,11 @@ function renderHistory() {
       <div>
         <div class="h-score">${st.total} <small>${st.complete ? `/ ${st.max}` : `pts · ${st.count}/${st.planned} flèches`}</small></div>
         <div class="muted" style="font-size:13px;margin:2px 0 6px">${fmtDate(s.date, true)}</div>
-        <div class="row"><span class="chip">${esc(s.config.distance)}</span><span class="chip">${esc(targetLabel(s.config.targetType))}</span>${isBest ? '<span class="chip gold">Meilleure</span>' : ''}${contestDays.has(dayKey(new Date(s.date))) ? '<span class="chip gold">★ Concours</span>' : ''}</div>
+        <div class="row"><span class="chip">${esc(s.config.distance)}</span><span class="chip">${esc(targetLabel(s.config.targetType))}</span>${isBest ? '<span class="chip gold">Meilleure</span>' : ''}${s.contest && s.contest.name ? `<span class="chip">${esc(s.contest.name)}</span>` : ''}${contestDays.has(dayKey(new Date(s.date))) ? '<span class="chip gold">★ Concours</span>' : ''}</div>
         <div class="muted" style="font-size:13px;margin-top:6px">Moy. ${st.count ? st.avg.toFixed(1) : '–'} · 10 et X : ${st.tens}</div>${metaLine(s)}
       </div>
       <div style="display:grid;gap:8px">
-        <button class="btn sm" data-action="open-session" data-id="${esc(s.id)}">Consulter</button>
+        ${s.manual ? `<button class="btn sm" data-action="contest-edit" data-id="${esc(s.id)}">Modifier</button>` : `<button class="btn sm" data-action="open-session" data-id="${esc(s.id)}">Consulter</button>`}
         <button class="btn sm danger" data-action="delete-session" data-id="${esc(s.id)}" aria-label="Supprimer la séance">${icon('trash')}</button>
       </div>
     </article>`;

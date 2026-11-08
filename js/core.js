@@ -179,6 +179,11 @@ const arrowCount = s => endsOf(s).flat().length + (s.trial || []).reduce((n, e) 
 /* ---------- Statistiques d'une séance ---------- */
 const endsOf = s => (s.ends || []).filter(Boolean);
 function sessionStats(s) {
+  if (s.manual) {   // concours saisi par son score final seul (js/concours.js) : pas de détail des flèches
+    const planned = s.config.arrowsPerEnd * s.config.totalEnds, total = +s.manual.total || 0;
+    return { arrows: [], count: planned, total, tens: +s.manual.tens || 0, xs: +s.manual.xs || 0, planned, max: planned * 10,
+             avg: planned ? total / planned : 0, complete: true, manual: true };
+  }
   const arrows = endsOf(s).flat();
   const total = sumScore(arrows);
   const tens = arrows.filter(a => a.valStr === '10' || a.valStr === 'X').length;
