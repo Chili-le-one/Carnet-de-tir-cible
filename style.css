@@ -334,3 +334,10 @@ tr.trial .sc{filter:grayscale(.85)}
 
 #qr-box{display:flex;justify-content:center}
 #qr-box svg{width:min(280px,100%);height:auto;border-radius:8px}
+
+/* Saisie rapide + mode Cible : cible plus grande (récupère la place des éléments en double) */
+#shoot-main.quick:has(#panel-target:not([hidden])) [data-ord=volee]>.row:last-child{display:none}
+#shoot-main.quick #panel-target{position:relative;padding:4px}
+#shoot-main.quick #panel-target>.row{position:absolute;right:6px;bottom:6px;margin:0!important;z-index:2}
+#shoot-main.quick #panel-target>.row .btn{min-height:36px;padding:4px 10px;font-size:13px}
+#shoot-main.quick .pendingbar{height:40px;min-height:40px;margin-bottom:2px}
