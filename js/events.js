@@ -19,28 +19,40 @@ function bindEvents() {
   const svg = $('#svg-target');
   let dragging = false;
   const place = e => { const p = pointerToSvg(e); setPending(p.x, p.y, p.touch ? { x: p.fx, y: p.fy } : null); loupeMove(p); };
+  // Anti-flèches fantômes : un seul doigt à la fois, pas de geste de défilement, anti-rebond entre deux flèches
+  svg.style.touchAction = 'none';
+  let activeId = null, lastConfirm = 0;
+  const DEBOUNCE_MS = 400;
+  const abort = () => {
+    if (!dragging) return;
+    dragging = false; activeId = null;
+    loupeStop();
+    app.pending = null;
+    renderPending();
+  };
   svg.addEventListener('pointerdown', e => {
     if (app.mode !== 'target' || !app.session || app.session.finished) return;
     e.preventDefault();
-    dragging = true;
+    if (dragging) { abort(); return; }                      // 2e doigt / paume : on annule tout, rien n'est validé
+    if (!e.isPrimary) return;
+    if (e.timeStamp - lastConfirm < DEBOUNCE_MS) return;    // rebond juste après une flèche
+    dragging = true; activeId = e.pointerId;
     try { svg.setPointerCapture(e.pointerId); } catch (err) {}
     loupeStart();
     place(e);
   });
-  svg.addEventListener('pointermove', e => { if (dragging) place(e); });
-  // Relâcher le doigt valide la flèche ; une interruption (appel, geste système) l'annule.
-  svg.addEventListener('pointerup', () => {
-    if (!dragging) return;
-    dragging = false;
+  svg.addEventListener('pointermove', e => { if (dragging && e.pointerId === activeId) place(e); });
+  // Relâcher le doigt valide la flèche ; une interruption (appel, geste système, 2e doigt) l'annule.
+  svg.addEventListener('pointerup', e => {
+    if (!dragging || e.pointerId !== activeId) return;
+    dragging = false; activeId = null;
     loupeStop();
+    lastConfirm = e.timeStamp;
     confirmPending();
   });
-  svg.addEventListener('pointercancel', () => {
-    dragging = false;
-    loupeStop();
-    app.pending = null;
-    renderPending();
-  });
+  svg.addEventListener('pointercancel', abort);
+  svg.addEventListener('lostpointercapture', abort);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) abort(); });
 
   $('#cfg-distance').addEventListener('change', e => { $('#cfg-custom-wrap').hidden = e.target.value !== 'Custom'; });
   $('#f-dist').addEventListener('change', renderStats);
