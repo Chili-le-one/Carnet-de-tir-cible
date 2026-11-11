@@ -15,6 +15,7 @@ function renderHistory() {
   const contestDays = new Set(store.get(KEYS.contests, []).map(c => c.date));
   const list = $('#history-list');
   if (!app.sessions.length) {
+    $('#hist-tools').hidden = true;
     list.innerHTML = `<div class="card empty"><h2>Historique vide</h2><p>Les séances terminées apparaissent ici.</p></div>`;
     return;
   }
@@ -27,21 +28,27 @@ function renderHistory() {
   const counts = {};
   app.sessions.forEach(s => { const k = fmtKey(s); counts[k] = (counts[k] || 0) + 1; });
 
+  const openIds = new Set(Array.from($$('#history-list details[open]')).map(d => d.dataset.id));
+  $('#hist-tools').hidden = false;
   list.innerHTML = app.sessions.map(s => {
     const st = sessionStats(s), k = fmtKey(s);
     const isBest = counts[k] > 1 && st.total === bestByFormat[k] && st.complete;
-    return `<article class="card hitem">
-      <div>
-        <div class="h-score">${st.total} <small>${st.complete ? `/ ${st.max}` : `pts · ${st.count}/${st.planned} flèches`}</small></div>
-        <div class="muted" style="font-size:13px;margin:2px 0 6px">${fmtDate(s.date, true)}</div>
-        <div class="row"><span class="chip">${esc(s.config.distance)}</span><span class="chip">${esc(targetLabel(s.config.targetType))}</span>${isBest ? '<span class="chip gold">Meilleure</span>' : ''}${s.contest && s.contest.name ? `<span class="chip">${esc(s.contest.name)}</span>` : ''}${contestDays.has(dayKey(new Date(s.date))) ? '<span class="chip gold">★ Concours</span>' : ''}</div>
-        <div class="muted" style="font-size:13px;margin-top:6px">Moy. ${st.count ? st.avg.toFixed(1) : '–'} · 10 et X : ${st.tens}</div>${metaLine(s)}
+    const cname = s.contest && s.contest.name ? `<div class="row" style="margin-bottom:6px"><span class="chip">${esc(s.contest.name)}</span></div>` : '';
+    return `<details class="card hitem chev" data-id="${esc(s.id)}"${openIds.has(s.id) ? ' open' : ''}>
+      <summary>
+        <div class="h-main">
+          <div class="h-line"><span class="h-score">${st.total} <small>${st.complete ? `/ ${st.max}` : `pts · ${st.count}/${st.planned} flèches`}</small></span><span class="muted h-date">${fmtDate(s.date, true)}</span></div>
+          <div class="row h-chips"><span class="chip">${esc(s.config.distance)}</span><span class="chip">${esc(targetLabel(s.config.targetType))}</span>${isBest ? '<span class="chip gold">Meilleure</span>' : ''}${contestDays.has(dayKey(new Date(s.date))) ? '<span class="chip gold">★ Concours</span>' : ''}</div>
+        </div>
+      </summary>
+      <div class="h-body">
+        ${cname}<div class="muted" style="font-size:13px">Moy. ${st.count ? st.avg.toFixed(1) : '–'} · 10 et X : ${st.tens}</div>${metaLine(s)}
+        <div class="row h-actions">
+          ${s.manual ? `<button class="btn sm" data-action="contest-edit" data-id="${esc(s.id)}">Modifier</button>` : `<button class="btn sm" data-action="open-session" data-id="${esc(s.id)}">Consulter</button>`}
+          <button class="btn sm danger" data-action="delete-session" data-id="${esc(s.id)}" aria-label="Supprimer la séance">${icon('trash')}</button>
+        </div>
       </div>
-      <div style="display:grid;gap:8px">
-        ${s.manual ? `<button class="btn sm" data-action="contest-edit" data-id="${esc(s.id)}">Modifier</button>` : `<button class="btn sm" data-action="open-session" data-id="${esc(s.id)}">Consulter</button>`}
-        <button class="btn sm danger" data-action="delete-session" data-id="${esc(s.id)}" aria-label="Supprimer la séance">${icon('trash')}</button>
-      </div>
-    </article>`;
+    </details>`;
   }).join('');
 }
 function openSession(id) {

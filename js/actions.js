@@ -25,7 +25,7 @@ function setMode(m) {
 
 /* ---------- Actions (délégation d'événements) ---------- */
 
-const APP_VERSION = 'v27 · 8 nov. 2026';
+const APP_VERSION = 'v29 · 11 nov. 2026';
 let deferredInstall = null;
 
 const actions = {
@@ -39,6 +39,7 @@ const actions = {
   'timer-hide': () => { store.set(KEYS.prefs, Object.assign({}, getPrefs(), { timer: false })); timerRender(); toast('Minuteur masqué : réaffichez-le dans Réglages ou en mode Disposition.'); },
   'timer-toggle': () => timerToggle(),
   'timer-reset': () => timerReset(),
+  'hist-fold': d => Array.from($$('#history-list details')).forEach(el => { el.open = d.open === '1'; }),
   'contest-open': () => contestOpen(),
   'contest-edit': d => contestOpen(d.id),
   'ct-mode': d => { ct.mode = d.m; ctRender(); },

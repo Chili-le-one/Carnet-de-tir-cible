@@ -108,14 +108,14 @@ function renderRegularity(data) {
       : `Évolution observée : ${sg} pt par flèche sur le dernier tiers des volées par rapport au premier tiers. Cette tendance décrit les données, pas leur cause.`;
   }
   card.innerHTML = `<h3>Régularité par volée</h3>
-    <p class="muted" style="margin:2px 0 8px;font-size:13px">Score moyen par flèche pour chaque numéro de volée (séances filtrées).</p>
+    <p class="muted hint" style="margin:2px 0 8px;font-size:13px">Score moyen par flèche pour chaque numéro de volée (séances filtrées).</p>
     ${lineChart(rows.map(r => r.avg), rows.map(r => `V${r.i + 1}`), 1)}
     <div class="grid2" style="margin-top:10px">
       <div class="mini"><dt>Meilleure volée</dt><dd>n° ${best.i + 1}</dd><div class="muted" style="font-size:12px">moy. ${best.avg.toFixed(1)}</div></div>
       <div class="mini"><dt>Plus faible</dt><dd>n° ${worst.i + 1}</dd><div class="muted" style="font-size:12px">moy. ${worst.avg.toFixed(1)}</div></div>
     </div>
     <p style="margin:10px 0 0;font-weight:650">${trend}</p>
-    <p class="muted" style="margin:6px 0 0;font-size:13px">Régularité : ${uni ? `±${(sd * uni).toFixed(1)} pts par volée` : `±${sd.toFixed(2)} pt par flèche`} (écart-type).</p>`;
+    <p class="muted hint" style="margin:6px 0 0;font-size:13px">Régularité : ${uni ? `±${(sd * uni).toFixed(1)} pts par volée` : `±${sd.toFixed(2)} pt par flèche`} (écart-type).</p>`;
 }
 
 function fillFilters() {
@@ -178,7 +178,7 @@ function renderGoal(data) {
     ${goal ? `<div class="progress" aria-hidden="true"><span style="width:${pct.toFixed(0)}%"></span></div>
       <p style="margin:8px 0 0;font-weight:650">${!usable.length ? 'Pas encore assez de flèches pour projeter.' : best >= goal ? 'Objectif atteint !' : `Meilleure projection : ${best} · il manque ${goal - best} points`}</p>`
       : '<p class="muted" style="margin:8px 0 0;font-size:13px">Aucun objectif défini : saisissez un score pour suivre votre progression.</p>'}
-    <p class="muted" style="margin:8px 0 0;font-size:13px">Les séances plus courtes sont ramenées à ${ref} flèches (ex. 10 volées de 3 : score ×2). Dernière séance : ${projectedScore(last)} projetés${sessionStats(last).count === ref ? '' : ` (${sessionStats(last).total} réels)`}. Seules les séances d'au moins ${Math.min(ref, 12)} flèches comptent.</p>`;
+    <p class="muted hint" style="margin:8px 0 0;font-size:13px">Les séances plus courtes sont ramenées à ${ref} flèches (ex. 10 volées de 3 : score ×2). Dernière séance : ${projectedScore(last)} projetés${sessionStats(last).count === ref ? '' : ` (${sessionStats(last).total} réels)`}. Seules les séances d'au moins ${Math.min(ref, 12)} flèches comptent.</p>`;
 }
 
 function renderRecords(data) {
@@ -262,7 +262,7 @@ function renderNumbers(data) {
   card.innerHTML = `<h3 style="margin-bottom:6px">Numéros de flèches</h3>
     <div class="table-wrap"><table><thead><tr><th>N°</th><th>Flèches</th><th>Moyenne</th><th>10 et X</th><th>Groupement</th></tr></thead><tbody>${rows.map(r =>
       `<tr><td><b>${r.n}</b></td><td>${r.cnt}</td><td${r.cnt >= 10 && r.avg === bestAvg ? ' style="font-weight:800"' : ''}>${r.avg.toFixed(2)}</td><td>${r.pct}%</td><td>${r.grp === null ? '–' : r.grp.toFixed(1) + ' cm'}</td></tr>`).join('')}</tbody></table></div>
-    <p class="muted" style="margin:8px 0 0;font-size:13px">Volées comptées seulement. Les écarts ne deviennent lisibles qu'à partir d'une dizaine de tirs par numéro. Groupement : rayon moyen autour du centre des impacts du numéro, affiché pour une seule distance et un seul blason (utilisez les filtres).</p>`;
+    <p class="muted hint" style="margin:8px 0 0;font-size:13px">Volées comptées seulement. Les écarts ne deviennent lisibles qu'à partir d'une dizaine de tirs par numéro. Groupement : rayon moyen autour du centre des impacts du numéro, affiché pour une seule distance et un seul blason (utilisez les filtres).</p>`;
 }
 
 /* ---------- Bilan du mois et comparaison de périodes ---------- */
@@ -322,7 +322,7 @@ function renderMonth() {
     <p class="muted" style="margin:10px 0 4px;font-size:13px">Par distance et blason</p>
     ${groups.map(g => `<div class="rec"><div><b>${esc(g.c.distance)} · ${esc(targetLabel(g.c.targetType))}</b><div class="muted" style="font-size:13px">${g.n} flèches · moy. ${(g.sum / g.n).toFixed(2)}</div></div></div>`).join('')}
     ${cur.best ? `<p style="margin:10px 0 0"><b>Meilleure séance</b> <span>${fmtDate(cur.best.x.date)} · ${esc(cur.best.x.config.distance)} · ${esc(targetLabel(cur.best.x.config.targetType))} · ${cur.best.st.total} pts</span></p>` : ''}
-    <p class="muted" style="margin:8px 0 0;font-size:13px">Meilleure moyenne par flèche parmi les séances d'au moins ${RECORD_MIN} flèches. Moyennes tous formats confondus.</p>`;
+    <p class="muted hint" style="margin:8px 0 0;font-size:13px">Meilleure moyenne par flèche parmi les séances d'au moins ${RECORD_MIN} flèches. Moyennes tous formats confondus.</p>`;
   card.innerHTML = `<div class="row between"><h3 style="margin:0">Bilan du mois</h3><span class="row">
       <button class="btn sm icon-only" data-action="month-prev" aria-label="Mois précédent"${monthOff <= minOff ? ' disabled' : ''}>‹</button>
       <button class="btn sm icon-only" data-action="month-next" aria-label="Mois suivant"${monthOff >= 0 ? ' disabled' : ''}>›</button></span></div>
@@ -363,11 +363,11 @@ function renderPeriods(data) {
   card.innerHTML = `<h3 style="margin-bottom:8px">Comparer deux périodes</h3>
     <div class="filters"><label>Période A${sel('p-a', cmpA)}</label><label>Période B${sel('p-b', cmpB)}</label></div>
     <div class="table-wrap" style="margin-top:10px"><table><thead><tr><th></th><th>A</th><th>B</th><th>Écart</th></tr></thead><tbody>${rows}</tbody></table></div>
-    <p class="muted" style="margin:8px 0 0;font-size:13px">Écart : période A moins période B. Les filtres ci-dessus s'appliquent aux deux périodes.</p>
+    <p class="muted hint" style="margin:8px 0 0;font-size:13px">Écart : période A moins période B. Les filtres ci-dessus s'appliquent aux deux périodes.</p>
     ${both && !oneFace ? '<p class="muted" style="margin:6px 0 0;font-size:13px">Plusieurs formats mélangés : choisissez une distance et un blason pour comparer des scores comparables.</p>' : ''}
     ${both && (A.n < RECORD_MIN || B.n < RECORD_MIN) ? '<p class="muted" style="margin:6px 0 0;font-size:13px">Peu de flèches dans une des périodes : prudence avec les écarts.</p>' : ''}
-    ${geo ? '<p class="muted" style="margin:6px 0 0;font-size:13px">Groupement et justesse : plus petit = plus précis.</p>' : ''}
-    <p class="muted" style="margin:6px 0 0;font-size:13px">Comparaison de chiffres observés : un écart ne dit pas ce qui l'explique.</p>`;
+    ${geo ? '<p class="muted hint" style="margin:6px 0 0;font-size:13px">Groupement et justesse : plus petit = plus précis.</p>' : ''}
+    <p class="muted hint" style="margin:6px 0 0;font-size:13px">Comparaison de chiffres observés : un écart ne dit pas ce qui l'explique.</p>`;
 }
 
 function renderStats() {
