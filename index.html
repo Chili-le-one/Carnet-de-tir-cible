@@ -19,23 +19,6 @@
 </head>
 <body>
 
-<header class="top">
-  <div class="brand">
-    <svg viewBox="-12 -12 24 24" aria-hidden="true">
-      <circle r="11" fill="#f6f6f6" stroke="#8b95a3" stroke-width=".6"/>
-      <circle r="8.8" fill="#1c1c1c"/>
-      <circle r="6.6" fill="#00A4E4"/>
-      <circle r="4.4" fill="#EE334E"/>
-      <circle r="2.2" fill="#FFD100"/>
-    </svg>
-    <div>
-      <h1>Carnet de Tir Cible</h1>
-      <p>Scores, volées et statistiques</p>
-    </div>
-  </div>
-  <button class="btn primary sm" data-action="new"><span data-i="plus"></span>Nouvelle</button>
-</header>
-
 <main>
 
   <!-- ============ SAISIE ============ -->
@@ -187,10 +170,10 @@
     </div>
     <div id="stats-body" hidden>
       <div class="kpis" id="kpis" data-ord="kpis"></div>
-      <div class="card" id="goal-card" data-ord="objectif"></div>
-      <div class="card" data-ord="evolution">
+      <div class="card" id="goal-card" data-ord="objectif" data-fold="open"></div>
+      <div class="card" data-ord="evolution" data-fold="open">
         <h3 id="evo-title">Évolution</h3>
-        <p class="muted" id="evo-note" style="margin:2px 0 8px;font-size:13px"></p>
+        <p class="muted hint" id="evo-note" style="margin:2px 0 8px;font-size:13px"></p>
         <div id="evo-chart"></div>
         <div id="evo-gear"></div>
       </div>
@@ -218,24 +201,31 @@
   <!-- ============ HISTORIQUE ============ -->
   <section id="tab-history" hidden>
     <button class="btn" style="margin-bottom:10px" data-action="contest-open"><span data-i="flag"></span>Saisir un score de concours</button>
-    <div class="card" id="cal-card"></div>
+    <details class="card chev" id="cal-details">
+      <summary><h3>Calendrier d'assiduité</h3></summary>
+      <div id="cal-card"></div>
+    </details>
+    <div id="hist-tools" class="row between" style="margin:4px 2px 8px" hidden>
+      <h3>Séances</h3>
+      <span class="row"><button class="btn sm" data-action="hist-fold" data-open="0">Tout réduire</button><button class="btn sm" data-action="hist-fold" data-open="1">Tout déplier</button></span>
+    </div>
     <div id="history-list"></div>
   </section>
 
   <!-- ============ RÉGLAGES ============ -->
   <section id="tab-data" hidden>
-    <div class="card">
-      <h2 style="margin-bottom:10px">Profil de tir</h2>
+    <details class="card chev set-sec" name="set">
+      <summary><h2>Profil de tir</h2></summary>
       <div class="fields">
         <label>Archer<input id="pf-name" autocomplete="name" placeholder="Votre nom"></label>
         <label>Arc<input id="pf-bow" autocomplete="off" placeholder="ex. Hoyt Formula, 38 lb"></label>
         <label>Type d'arc<select id="pf-type"><option value="">Non précisé</option><option value="Arc classique">Arc classique</option><option value="Arc à poulies">Arc à poulies</option><option value="Arc nu (barebow)">Arc nu (barebow)</option><option value="Longbow">Longbow</option><option value="Arc droit / traditionnel">Arc droit / traditionnel</option><option value="Autre">Autre</option></select></label>
       </div>
-      <p class="muted" style="margin:10px 0 0;font-size:13px">Ces informations sont enregistrées avec chaque nouvelle séance.</p>
-    </div>
+      <p class="muted hint" style="margin:10px 0 0;font-size:13px">Ces informations sont enregistrées avec chaque nouvelle séance.</p>
+    </details>
 
-    <div class="card">
-      <h2 style="margin-bottom:10px">Préférences</h2>
+    <details class="card chev set-sec" name="set">
+      <summary><h2>Préférences</h2></summary>
       <div class="fields">
         <label class="check"><input type="checkbox" id="pref-wake">Garder l'écran allumé pendant une séance</label>
         <label class="check"><input type="checkbox" id="pref-loupe">Loupe sur la cible (zoom pendant la visée)</label>
@@ -261,18 +251,18 @@
           </select>
         </label>
       </div>
-    </div>
+    </details>
 
-    <div class="card">
-      <h2 style="margin-bottom:6px">Fiches de réglage</h2>
-      <p class="muted" style="margin-top:0;font-size:13px">Une fiche par arc, avec des variantes datées (diamètre des flèches, poids, hauteur de corde…). La variante choisie est liée à chaque séance ; le diamètre des flèches sert à la règle de la ligne en mode Cible.</p>
+    <details class="card chev set-sec" name="set">
+      <summary><h2>Fiches de réglage</h2></summary>
+      <p class="muted hint" style="margin-top:0;font-size:13px">Une fiche par arc, avec des variantes datées (diamètre des flèches, poids, hauteur de corde…). La variante choisie est liée à chaque séance ; le diamètre des flèches sert à la règle de la ligne en mode Cible.</p>
       <div id="sheet-list"></div>
       <button class="btn" style="margin-top:8px" data-action="sheet-new"><span data-i="plus"></span>Nouvelle fiche (arc)</button>
-    </div>
+    </details>
 
-    <div class="card">
-      <h2 style="margin-bottom:6px">Journal du matériel</h2>
-      <p class="muted" style="margin-top:0;font-size:13px">Notez un changement (flèches, corde, repose-flèche…) : il apparaît sur la courbe d'évolution des statistiques.</p>
+    <details class="card chev set-sec" name="set">
+      <summary><h2>Journal du matériel</h2></summary>
+      <p class="muted hint" style="margin-top:0;font-size:13px">Notez un changement (flèches, corde, repose-flèche…) : il apparaît sur la courbe d'évolution des statistiques.</p>
       <div class="fields">
         <div class="two">
           <label>Date<input id="gear-date" type="date"></label>
@@ -281,33 +271,33 @@
         <button class="btn" data-action="gear-add"><span data-i="plus"></span>Ajouter</button>
       </div>
       <div id="gear-list" style="margin-top:8px"></div>
-    </div>
+    </details>
 
-    <div class="card">
-      <h2 style="margin-bottom:6px">Modèles de séance</h2>
-      <p class="muted" style="margin-top:0;font-size:13px">Dans « Nouvelle séance », un modèle se lance d'un seul toucher. Pour en créer ou en modifier un, réglez la séance puis « Enregistrer comme modèle » (même nom : le modèle est remplacé).</p>
+    <details class="card chev set-sec" name="set">
+      <summary><h2>Modèles de séance</h2></summary>
+      <p class="muted hint" style="margin-top:0;font-size:13px">Dans « Nouvelle séance », un modèle se lance d'un seul toucher. Pour en créer ou en modifier un, réglez la séance puis « Enregistrer comme modèle » (même nom : le modèle est remplacé).</p>
       <div id="tpl-list"></div>
       <button class="btn sm" style="margin-top:8px" data-action="tpl-reset">Rétablir les modèles de départ</button>
-    </div>
+    </details>
 
-    <div class="card">
-      <h2 style="margin-bottom:6px">Disposition</h2>
-      <p class="muted" style="margin-top:0">Choisissez l'ordre des fenêtres de chaque page avec les flèches ↑ ↓.</p>
+    <details class="card chev set-sec" name="set">
+      <summary><h2>Disposition</h2></summary>
+      <p class="muted hint" style="margin-top:0">Choisissez l'ordre des fenêtres de chaque page avec les flèches ↑ ↓.</p>
       <div class="grid2">
         <button class="btn" data-action="ord-start" data-tab="shoot"><span data-i="grid"></span>Page Saisie</button>
         <button class="btn" data-action="ord-start" data-tab="stats"><span data-i="chart"></span>Page Stats</button>
       </div>
       <button class="btn big" style="margin-top:10px" data-action="ord-reset">Rétablir l'ordre par défaut</button>
-    </div>
+    </details>
 
-    <div class="card">
-      <h2 style="margin-bottom:6px">Sauvegarde</h2>
+    <details class="card chev set-sec" name="set">
+      <summary><h2>Sauvegarde</h2></summary>
       <p class="muted" style="margin-top:0">Vos séances sont enregistrées uniquement sur cet appareil. <span id="backup-status"></span></p>
       <div class="grid2">
         <button class="btn primary big" data-action="share-backup"><span data-i="upload"></span>Sauvegarder</button>
         <button class="btn big" data-action="restore-open"><span data-i="download"></span>Restaurer</button>
       </div>
-      <p class="muted" style="margin:10px 0 0;font-size:13px">L'appli fait aussi seule des copies de sécurité sur l'appareil : une par jour, une à la fin de chaque séance et une avant toute suppression.</p>
+      <p class="muted hint" style="margin:10px 0 0;font-size:13px">L'appli fait aussi seule des copies de sécurité sur l'appareil : une par jour, une à la fin de chaque séance et une avant toute suppression.</p>
       <details class="adv">
         <summary>Options avancées</summary>
         <div class="fields">
@@ -334,10 +324,10 @@
           <button class="btn danger" data-action="copies-clear"><span data-i="trash"></span>Supprimer les copies automatiques</button>
         </div>
       </details>
-    </div>
+    </details>
 
-    <div class="card">
-      <h2 style="margin-bottom:6px">Application</h2>
+    <details class="card chev set-sec" name="set">
+      <summary><h2>Application</h2></summary>
       <p id="pwa-status" class="muted" style="margin-top:0">Hors ligne : se prépare au premier chargement en ligne.</p>
       <button class="btn primary big" id="btn-install" data-action="install"><span data-i="download"></span>Installer l'application</button>
       <p id="install-help" class="muted" style="margin:10px 0 0;font-size:13px">Android (Chrome) : menu ⋮ puis « Installer l'application ». iPhone (Safari) : Partager puis « Sur l'écran d'accueil ».</p>
@@ -345,13 +335,13 @@
       <button class="btn big" style="margin-top:12px" data-action="qr-open"><span data-i="grid"></span>QR code de l'application</button>
       <button class="btn big" style="margin-top:12px" data-action="refresh-app"><span data-i="undo"></span>Mettre à jour l'application</button>
       <p class="muted" style="margin:8px 0 0;font-size:13px">Version <b id="app-version"></b> · vos séances ne sont pas effacées par la mise à jour.</p>
-    </div>
+    </details>
 
-    <div class="card">
-      <h2 style="margin-bottom:6px">Zone sensible</h2>
+    <details class="card chev set-sec" name="set">
+      <summary><h2>Zone sensible</h2></summary>
       <p class="muted" style="margin-top:0">Efface toutes les séances de cet appareil. Cette action est définitive.</p>
       <button class="btn danger" data-action="reset"><span data-i="trash"></span>Tout supprimer</button>
-    </div>
+    </details>
   </section>
 
 </main>
@@ -617,6 +607,7 @@
 <script src="js/fiches.js"></script>
 <script src="js/ordre.js"></script>
 <script src="js/actions.js"></script>
+<script src="js/ui.js"></script>
 <script src="js/events.js"></script>
 <script src="js/main.js"></script>
 </body>

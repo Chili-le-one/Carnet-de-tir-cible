@@ -156,6 +156,7 @@
     "Notez un changement (flèches, corde, repose-flèche…) : il apparaît sur la courbe d'évolution des statistiques.": "Log a change (arrows, string, arrow rest…): it appears on the progress curve in the stats.",
     "Aucun changement noté pour l'instant.": "No change logged yet.",
     "Nouvelle": "New", "Nouvelle séance": "New session",
+    "Tout réduire": "Collapse all", "Tout déplier": "Expand all", "Calendrier d'assiduité": "Attendance calendar", "Séances": "Sessions", "Explication": "Explanation",
     "Objectif": "Goal", "Objectif atteint !": "Goal reached!", "Objectif atteint, bravo !": "Goal reached, well done!", "Objectif de la semaine": "Weekly goal",
     "Objectif hebdomadaire (flèches par semaine)": "Weekly goal (arrows per week)",
     "Aucun objectif défini : saisissez un score pour suivre votre progression.": "No goal set: enter a score to track your progress.",

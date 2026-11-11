@@ -29,6 +29,7 @@ Aucun fichier n'a besoin d'être compilé : on met tout le dossier en ligne tel 
 | `fiches.js` | Fiches de réglage par arc : variantes datées, choix à la nouvelle séance, fusion à l'import | 8 Ko |
 | `ordre.js` | Version et ordre des blocs (mode Disposition) | 4 Ko |
 | `actions.js` | Navigation entre onglets et table des boutons | 6 Ko |
+| `ui.js` | Bouton « i » (explications `.hint` d'une carte) et cartes dépliables de l'onglet Stats | 3 Ko |
 | `events.js` | Écouteurs d'événements | 5 Ko |
 | `main.js` | Démarrage | 2 Ko |
 
@@ -39,6 +40,11 @@ Les fichiers de `js/` sont des scripts classiques : ils partagent leurs variable
 - **Après toute modification** : changer le numéro `carnet-tir-cible-vXX` dans `sw.js`, sinon le téléphone peut garder l'ancienne version.
 - **Un nouveau texte à l'écran** : l'ajouter aussi dans `i18n.js` pour l'anglais.
 - **Dans une demande, indiquer le ou les fichiers concernés** : seuls ceux-là sont relus et renvoyés.
+
+## Interface (v29)
+- Une explication longue se marque `class="muted hint"` : elle est masquée et un bouton « i » apparaît à côté du titre de la carte (`ui.js`, automatique).
+- Stats : toutes les cartes (sauf Évolution et Objectif, `data-fold="open"`) sont repliées au départ ; on touche le titre pour déplier.
+- Réglages : chaque carte est un `<details class="card chev set-sec" name="set">` (un seul ouvert à la fois). Historique : séances et calendrier en `<details>`.
 
 ## Pour les tests (dossier `dev/`, ne pas mettre en ligne)
 `dev/build_test.py` assemble une page de test, puis `node dev/<test>.js` (jsdom et fake-indexeddb à installer avec `npm i`).
