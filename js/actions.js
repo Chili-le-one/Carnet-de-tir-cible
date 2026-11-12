@@ -25,7 +25,7 @@ function setMode(m) {
 
 /* ---------- Actions (délégation d'événements) ---------- */
 
-const APP_VERSION = 'v29 · 11 nov. 2026';
+const APP_VERSION = 'v31 · 12 nov. 2026';
 let deferredInstall = null;
 
 const actions = {
@@ -49,6 +49,8 @@ const actions = {
   'cal-prev': () => calMove(-1),
   'cal-next': () => calMove(1),
   'cal-day': d => { app.cal.sel = d.d; renderCalendar(); },
+  'vol-add': d => volAdd(d.d),
+  'vol-del': d => volDel(d.id),
   'cal-contest-add': d => contestAdd(d.d),
   'cal-contest-del': d => contestDel(d.d),
   'copy-restore': d => restoreCopy(d.ts),

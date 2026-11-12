@@ -26,7 +26,8 @@ const KEYS = {
   order: 'carnet_tir_ordre',
   contests: 'carnet_tir_concours',
   templates: 'carnet_tir_modeles',
-  sheets: 'carnet_tir_fiches'
+  sheets: 'carnet_tir_fiches',
+  volumes: 'carnet_tir_volumes'
 };
 
 const PRESETS = [

@@ -67,7 +67,8 @@ function analyze(s) {
 /* ---------- Objectif hebdomadaire ---------- */
 const mondayOf = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x.getTime(); };
 
-const arrowsThisWeek = () => app.sessions.filter(x => mondayOf(x.date) === mondayOf(new Date())).reduce((a, x) => a + sessionStats(x).count, 0);
+const arrowsThisWeek = () => app.sessions.filter(x => mondayOf(x.date) === mondayOf(new Date())).reduce((a, x) => a + sessionStats(x).count, 0)
+  + volumes().filter(v => mondayOf(v.date + 'T12:00:00') === mondayOf(new Date())).reduce((a, v) => a + v.arrows, 0);
 
 /* ---------- Régularité par volée ---------- */
 function renderRegularity(data) {
@@ -203,21 +204,23 @@ function renderVolume() {
   const all = [...app.sessions];
   const u = loadUnfinished();
   if (u && !all.some(x => x.id === u.id)) all.push(u);
-  card.hidden = !all.length;
-  if (!all.length) return;
+  const vols = volumes();
+  card.hidden = !all.length && !vols.length;
+  if (card.hidden) return;
   const monday = d => { const x = new Date(d); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x.getTime(); };
   const thisWeek = monday(new Date());
   const WEEK = 7 * 864e5;
   const weeks = Array.from({ length: 8 }, (_, i) => ({ t: thisWeek - (7 - i) * WEEK, n: 0 }));
   const now = new Date();
   let month = 0, total = 0;
-  all.forEach(x => {
-    const n = sessionStats(x).count, d = new Date(x.date);
+  const add = (n, d) => {
     total += n;
     if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) month += n;
     const w = weeks.find(k => monday(d) === k.t);
     if (w) w.n += n;
-  });
+  };
+  all.forEach(x => add(sessionStats(x).count, new Date(x.date)));
+  vols.forEach(v => add(v.arrows, new Date(v.date + 'T12:00:00')));
   const max = Math.max(1, ...weeks.map(w => w.n));
   const bw = 30, gap = 8, H = 90;
   const bars = weeks.map((w, i) => {

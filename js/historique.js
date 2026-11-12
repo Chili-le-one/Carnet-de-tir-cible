@@ -86,6 +86,33 @@ function contestAdd(day) {
   toast('Concours ajouté.');
   renderHistory();
 }
+/* Volumes : flèches tirées un jour donné, sans score (ne comptent ni dans les moyennes ni dans les records). */
+const volumes = () => {
+  const old = store.get('tir-volumes', null);   // clé de la v30 : on la reprend une fois
+  if (old) { store.set(KEYS.volumes, store.get(KEYS.volumes, []).concat(old)); store.del('tir-volumes'); }
+  return store.get(KEYS.volumes, []);
+};
+function mergeVolumes(list) {
+  const cur = volumes(), ids = new Set(cur.map(v => v.id));
+  const ok = list.filter(v => v && v.id && !ids.has(v.id) && /^\d{4}-\d{2}-\d{2}$/.test(v.date) && v.arrows > 0 && v.arrows <= 5000)
+    .map(v => ({ id: String(v.id), date: v.date, arrows: Math.round(v.arrows), note: String(v.note || '').slice(0, 60) }));
+  if (ok.length) store.set(KEYS.volumes, cur.concat(ok));
+  return ok.length;
+}
+function volAdd(day) {
+  const input = $('#vol-n'), note = $('#vol-note'), n = Math.round(+(input && input.value));
+  if (!(n > 0 && n <= 5000)) { toast('Indiquez un nombre de flèches (1 à 5000).'); return; }
+  const list = volumes();
+  list.push({ id: 'v' + Date.now(), date: day, arrows: n, note: note ? note.value.trim().slice(0, 60) : '' });
+  store.set(KEYS.volumes, list);
+  toast(`${n} flèches ajoutées.`);
+  renderHistory();
+}
+function volDel(id) {
+  store.set(KEYS.volumes, volumes().filter(v => v.id !== id));
+  toast('Volume retiré.');
+  renderHistory();
+}
 function contestDel(day) {
   store.set(KEYS.contests, store.get(KEYS.contests, []).filter(c => c.date !== day));
   toast('Concours retiré.');
@@ -101,6 +128,8 @@ function renderCalendar() {
     arrows[k] = (arrows[k] || 0) + sessionStats(s).count;
     (byDay[k] = byDay[k] || []).push(s);
   });
+  const vols = {};
+  volumes().forEach(v => { arrows[v.date] = (arrows[v.date] || 0) + v.arrows; (vols[v.date] = vols[v.date] || []).push(v); });
   const contests = store.get(KEYS.contests, []), cmap = {};
   contests.forEach(c => { cmap[c.date] = c; });
 
@@ -123,9 +152,11 @@ function renderCalendar() {
 
   const sel = app.cal.sel, ds = byDay[sel] || [], contest = cmap[sel];
   const selLabel = new Date(sel + 'T12:00:00').toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long' });
+  const volHtml = (vols[sel] || []).map(v => `<div class="rec"><div><b>${v.arrows} flèches</b> <span class="muted">· volume${v.note ? ' · ' + esc(v.note) : ''}</span></div><button class="btn sm danger" data-action="vol-del" data-id="${esc(v.id)}">Retirer</button></div>`).join('') +
+    `<div class="fields" style="margin-top:8px"><label>Flèches tirées ce jour (sans score)<input id="vol-n" type="number" inputmode="numeric" min="1" max="5000" placeholder="ex. 120"></label><label>Note (facultatif)<input id="vol-note" maxlength="60" autocomplete="off"></label><button class="btn" data-action="vol-add" data-d="${sel}">+ Ajouter ce volume</button></div>`;
   const selHtml = `<div class="cal-sel"><h3 style="text-transform:capitalize;margin-bottom:6px">${selLabel}</h3>` +
     (ds.length ? ds.map(s => { const st = sessionStats(s); return `<div class="rec"><div><b>${st.total} pts</b> <span class="muted">· ${esc(s.config.distance)} · ${st.count} flèches</span></div><button class="btn sm" data-action="open-session" data-id="${esc(s.id)}">Consulter</button></div>`; }).join('')
-      : '<p class="muted" style="margin:6px 0">Aucune séance ce jour.</p>') +
+      : (vols[sel] ? '' : '<p class="muted" style="margin:6px 0">Aucune séance ce jour.</p>')) + volHtml +
     (contest
       ? `<div class="rec"><div><b>★ ${esc(contest.name || 'Jour de concours')}</b></div><button class="btn sm danger" data-action="cal-contest-del" data-d="${sel}">Retirer</button></div>`
       : `<div class="fields" style="margin-top:8px"><label>Nom du concours (facultatif)<input id="cal-name" maxlength="60" autocomplete="off"></label><button class="btn" data-action="cal-contest-add" data-d="${sel}">★ Marquer comme jour de concours</button></div>`) +
