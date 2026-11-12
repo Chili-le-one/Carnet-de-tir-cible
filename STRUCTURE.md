@@ -41,6 +41,11 @@ Les fichiers de `js/` sont des scripts classiques : ils partagent leurs variable
 - **Un nouveau texte à l'écran** : l'ajouter aussi dans `i18n.js` pour l'anglais.
 - **Dans une demande, indiquer le ou les fichiers concernés** : seuls ceux-là sont relus et renvoyés.
 
+## Historique des versions
+- **v29 (11 nov. 2026)** : refonte de l'interface. Bande du haut supprimée (« Nouvelle séance » dans l'onglet Saisie) ; bouton « i » pour les explications ; Stats en cartes repliables ; Historique avec séances et calendrier réductibles (« Tout réduire / Tout déplier ») ; Réglages en 9 sous-menus. Nouveau fichier `js/ui.js`.
+- **v28** : cache `carnet-tir-cible-v28` (numéro affiché resté à v27). Contenu à compléter : je n'ai pas le détail de cette version.
+- v24 à v27 : voir « Données ajoutées » plus bas.
+
 ## Interface (v29)
 - Une explication longue se marque `class="muted hint"` : elle est masquée et un bouton « i » apparaît à côté du titre de la carte (`ui.js`, automatique).
 - Stats : toutes les cartes (sauf Évolution et Objectif, `data-fold="open"`) sont repliées au départ ; on touche le titre pour déplier.
