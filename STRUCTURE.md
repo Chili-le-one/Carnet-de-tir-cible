@@ -15,15 +15,15 @@ Aucun fichier n'a besoin d'être compilé : on met tout le dossier en ligne tel 
 ## Dossier `js/` (la logique, un fichier par rôle)
 | Fichier | Contenu | Taille |
 |---|---|---|
-| `core.js` | Constantes, utilitaires, règles de score (dont règle de la flèche sur la ligne), volées d'essai, état, séances | 14 Ko |
+| `core.js` | Constantes (dont `KEYS`), utilitaires, règles de score (dont règle de la flèche sur la ligne), volées d'essai, état, séances | 15 Ko |
 | `saisie.js` | Saisie des flèches (essais, numéro de flèche), cible tactile, page Saisie, modification d'une flèche, nouvelle séance, modèles, saisie rapide | 21 Ko |
 | `outils.js` | Notes de séance, écran allumé, minuteur, loupe | 9 Ko |
 | `bilan.js` | Bilan de séance, aide au viseur, image partagée, impression | 14 Ko |
 | `stats.js` | Onglet Stats : filtres, objectif, records, régularité, numéros de flèches, volume, bilan du mois, comparaison de périodes | 30 Ko |
 | `cartes.js` | Onglet Stats : carte des impacts, ellipse, cartographie par volée, comparaison de deux volées | 13 Ko |
-| `historique.js` | Onglet Historique : liste et calendrier | 8 Ko |
+| `historique.js` | Onglet Historique : liste, calendrier, volumes de flèches sans score (`volumes()`, `volAdd`, `volDel`, `mergeVolumes`) | 11 Ko |
 | `concours.js` | Saisie d'un score de concours sans la cible : score final seul (`s.manual`) ou toutes les flèches au clavier | 7 Ko |
-| `sauvegarde.js` | Rappel, export/import (séances + fiches), copies automatiques, partage | 11 Ko |
+| `sauvegarde.js` | Rappel, export/import (séances + fiches + volumes), copies automatiques, partage | 12 Ko |
 | `qr.js` | Générateur de QR code (hors ligne) et fenêtre « QR code de l'application » | 8 Ko |
 | `reglages.js` | Réglages : profil, préférences, matériel | 3 Ko |
 | `fiches.js` | Fiches de réglage par arc : variantes datées, choix à la nouvelle séance, fusion à l'import | 8 Ko |
@@ -42,6 +42,7 @@ Les fichiers de `js/` sont des scripts classiques : ils partagent leurs variable
 - **Dans une demande, indiquer le ou les fichiers concernés** : seuls ceux-là sont relus et renvoyés.
 
 ## Historique des versions
+- **v31 (12 nov. 2026)** : volumes de flèches sans score (la v30, jamais installée, est incluse). Dans le calendrier de l'Historique, le jour choisi permet d'ajouter un nombre de flèches (1 à 5000) avec une note facultative, et de le retirer. Compté dans le calendrier, le bloc Volume d'entraînement des Stats et l'objectif de la semaine ; jamais dans les scores, moyennes ni records. Inclus dans l'export/import JSON, les copies automatiques et l'effacement total. Fichiers modifiés : `core.js`, `historique.js`, `stats.js`, `actions.js`, `sauvegarde.js`, `sw.js`. Textes anglais à ajouter dans `i18n.js` (non fait).
 - **v29 (11 nov. 2026)** : refonte de l'interface. Bande du haut supprimée (« Nouvelle séance » dans l'onglet Saisie) ; bouton « i » pour les explications ; Stats en cartes repliables ; Historique avec séances et calendrier réductibles (« Tout réduire / Tout déplier ») ; Réglages en 9 sous-menus. Nouveau fichier `js/ui.js`.
 - **v28** : cache `carnet-tir-cible-v28` (numéro affiché resté à v27). Contenu à compléter : je n'ai pas le détail de cette version.
 - v24 à v27 : voir « Données ajoutées » plus bas.
@@ -58,7 +59,8 @@ Les fichiers de `js/` sont des scripts classiques : ils partagent leurs variable
 - `s.trial` : volées d'essai (à part de `s.ends`, donc jamais comptées) ; `config.trialEnds` = leur nombre. `currentEndIndex` est un rang global (essais d'abord).
 - `a.n` : numéro de la flèche ; `config.trackNums` active le suivi.
 - `s.setup` : copie de la variante de fiche liée à la séance ; `config.arrowMm` : diamètre des flèches (règle de la ligne, dans `face()` / `zoneAt()`).
-- Fiches : clé `carnet_tir_fiches` (non incluse dans l'export JSON des séances ; chaque séance garde sa copie).
+- Fiches : clé `carnet_tir_fiches` (incluses dans l'export JSON et les copies automatiques ; chaque séance garde aussi sa copie).
+- Volumes : clé `carnet_tir_volumes` = liste de `{ id, date: 'AAAA-MM-JJ', arrows, note }`. Hors de `app.sessions` : aucun effet sur `sessionStats()`, les scores ni les records. Lus partout par `volumes()` (historique.js).
 
 ## Données ajoutées en v25
 - `config.arrowNums` : numéros de flèches utilisés pendant la séance (liste triée, ex. `[4, 8, 10]`) ; absent = tous les numéros de 1 à `quiverSize`. Dernière liste mémorisée sous la clé `carnet_tir_flechesjour`.
