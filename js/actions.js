@@ -25,7 +25,7 @@ function setMode(m) {
 
 /* ---------- Actions (délégation d'événements) ---------- */
 
-const APP_VERSION = 'v32 · 13 nov. 2026';
+const APP_VERSION = 'v33 · 13 nov. 2026';
 let deferredInstall = null;
 
 const actions = {
