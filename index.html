@@ -170,7 +170,7 @@
     </div>
     <div id="stats-body" hidden>
       <div class="kpis" id="kpis" data-ord="kpis"></div>
-      <div class="card" id="goal-card" data-ord="objectif" data-fold="open"></div>
+      <div class="card" id="goal-card" data-ord="objectif"></div>
       <div class="card" data-ord="evolution" data-fold="open">
         <h3 id="evo-title">Évolution</h3>
         <p class="muted hint" id="evo-note" style="margin:2px 0 8px;font-size:13px"></p>
@@ -349,11 +349,12 @@
 
 </main>
 
+<div id="update-banner" class="update-banner" role="status" hidden><span>Nouvelle version disponible.</span><button class="btn sm primary" data-action="reload-app">Mettre à jour</button></div>
 <nav class="tabs" aria-label="Navigation principale">
-  <button data-action="tab" data-tab="shoot" aria-current="page"><span data-i="target"></span>Saisie</button>
-  <button data-action="tab" data-tab="stats"><span data-i="chart"></span>Stats</button>
-  <button data-action="tab" data-tab="history"><span data-i="list"></span>Historique</button>
-  <button data-action="tab" data-tab="data"><span data-i="gear"></span>Réglages</button>
+  <button data-action="tab" data-tab="shoot" aria-current="page"><span data-i="tab-saisie"></span>Saisie</button>
+  <button data-action="tab" data-tab="stats"><span data-i="tab-stats"></span>Stats</button>
+  <button data-action="tab" data-tab="history"><span data-i="tab-histo"></span>Historique</button>
+  <button data-action="tab" data-tab="data"><span data-i="tab-reglages"></span>Réglages</button>
 </nav>
 
 <!-- ============ NOUVELLE SÉANCE ============ -->

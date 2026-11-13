@@ -35,3 +35,7 @@
 [data-theme="epure"] .h-body{padding-top:10px}
 [data-theme="epure"] .chip{background:transparent;border:1px solid var(--line)}
 #tab-data:not(.show-adv) .adv{display:none}
+.update-banner{position:fixed;top:0;left:0;right:0;z-index:60;display:flex;gap:12px;align-items:center;justify-content:space-between;padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;background:var(--ink,#1B1F1D);color:var(--bg,#fff);font-size:14px;font-weight:600}
+.update-banner[hidden]{display:none}
+[data-theme="epure"] .card.foldable .fold-title{padding:14px 0;font-size:16px;font-weight:500}
+[data-theme="epure"] #stats-body .card.foldable{padding:0}

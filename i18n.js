@@ -12,6 +12,11 @@
   if (lang === 'fr') return;
 
   var EXACT = {
+    "Mode simple : réglages avancés masqués": "Simple mode: advanced settings hidden", "Tout afficher": "Show all", "Mode simple": "Simple mode",
+    "Épuré (fond uni, une couleur d'accent)": "Clean (plain background, single accent colour)",
+    "Flèches tirées ce jour (sans score)": "Arrows shot that day (no score)", "Note (facultatif)": "Note (optional)", "+ Ajouter ce volume": "+ Add this volume",
+    "Indiquez un nombre de flèches (1 à 5000).": "Enter a number of arrows (1 to 5000).", "Volume retiré.": "Volume removed.",
+    "Nouvelle version disponible.": "New version available.", "Mettre à jour": "Update",
     "Mes flèches": "My arrows", "Mes flèches du jour": "Today's arrows", "Choisir mes flèches du jour": "Choose today's arrows",
     "sur la ligne · relâchez": "on the line · release", "Gardez au moins une flèche.": "Keep at least one arrow.",
     "Touchez les numéros des flèches que vous tirez aujourd'hui : seuls ceux-là seront proposés.": "Tap the numbers of the arrows you shoot today: only those will be offered.",
@@ -268,6 +273,10 @@
 
   function plural(n, one, many) { return n + ' ' + (parseFloat(n) === 1 ? one : many); }
   var PATTERNS = [
+    [/^(\d+) volées × (\d+)$/, function (m) { return m[1] + ' ends × ' + m[2]; }],
+    [/^(\d+) flèches$/, function (m) { return m[1] + ' arrows'; }],
+    [/^(\d+) flèches ajoutées\.$/, function (m) { return m[1] + ' arrows added.'; }],
+    [/^(\d+) volumes? de flèches ajoutés?\.$/, function (m) { return plural(m[1], 'arrow volume', 'arrow volumes') + ' added.'; }],
     [/^moy\. ([\d.]+)$/, function (m) { return 'avg. ' + m[1]; }],
     [/^(\d+) variantes? de fiche ajoutées?\.$/, function (m) { return plural(m[1], 'sheet variant', 'sheet variants') + ' added.'; }],
     [/^Distance entre les deux points moyens : ([\d.]+) cm\.$/, function (m) { return 'Distance between the two mean points: ' + m[1] + ' cm.'; }],
