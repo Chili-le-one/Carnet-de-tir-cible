@@ -34,3 +34,4 @@
 [data-theme="epure"] .h-score{font-size:22px}
 [data-theme="epure"] .h-body{padding-top:10px}
 [data-theme="epure"] .chip{background:transparent;border:1px solid var(--line)}
+#tab-data:not(.show-adv) .adv{display:none}

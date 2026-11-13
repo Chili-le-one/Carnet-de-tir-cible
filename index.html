@@ -39,7 +39,7 @@
     <div id="shoot-main" hidden>
       <div class="card" data-ord="statut">
         <div class="row between">
-          <div class="row"><span class="chip" id="chip-dist"></span><span class="chip" id="chip-target"></span></div>
+          <div class="row"><span class="chip" id="chip-dist"></span><span class="chip" id="chip-target"></span><span class="chip" id="chip-ends"></span></div>
           <details class="opts"><summary>Options ⋯</summary><div class="row"><button class="btn sm" id="btn-quick" data-action="quick-toggle">Saisie rapide</button><button class="btn sm" id="btn-finish" data-action="finish-early"><span data-i="flag"></span>Terminer</button></div></details>
         </div>
         <div class="total"><span class="big" id="s-total">0</span><span class="muted" id="s-max"></span></div>
@@ -214,6 +214,8 @@
 
   <!-- ============ RÉGLAGES ============ -->
   <section id="tab-data" hidden>
+    <div class="row between" style="margin-bottom:8px"><span class="muted" style="font-size:14px">Mode simple : réglages avancés masqués</span><button class="btn sm" id="btn-adv" data-action="adv-toggle">Tout afficher</button></div>
+    <script>try{if(localStorage.getItem("carnet_tir_avances")==="1"){document.getElementById("tab-data").classList.add("show-adv");document.getElementById("btn-adv").textContent="Mode simple";}}catch(e){}</script>
     <details class="card chev set-sec" name="set">
       <summary><h2>Profil de tir</h2></summary>
       <div class="fields">
@@ -254,14 +256,14 @@
       </div>
     </details>
 
-    <details class="card chev set-sec" name="set">
+    <details class="card chev set-sec adv" name="set">
       <summary><h2>Fiches de réglage</h2></summary>
       <p class="muted hint" style="margin-top:0;font-size:13px">Une fiche par arc, avec des variantes datées (diamètre des flèches, poids, hauteur de corde…). La variante choisie est liée à chaque séance ; le diamètre des flèches sert à la règle de la ligne en mode Cible.</p>
       <div id="sheet-list"></div>
       <button class="btn" style="margin-top:8px" data-action="sheet-new"><span data-i="plus"></span>Nouvelle fiche (arc)</button>
     </details>
 
-    <details class="card chev set-sec" name="set">
+    <details class="card chev set-sec adv" name="set">
       <summary><h2>Journal du matériel</h2></summary>
       <p class="muted hint" style="margin-top:0;font-size:13px">Notez un changement (flèches, corde, repose-flèche…) : il apparaît sur la courbe d'évolution des statistiques.</p>
       <div class="fields">
@@ -274,14 +276,14 @@
       <div id="gear-list" style="margin-top:8px"></div>
     </details>
 
-    <details class="card chev set-sec" name="set">
+    <details class="card chev set-sec adv" name="set">
       <summary><h2>Modèles de séance</h2></summary>
       <p class="muted hint" style="margin-top:0;font-size:13px">Dans « Nouvelle séance », un modèle se lance d'un seul toucher. Pour en créer ou en modifier un, réglez la séance puis « Enregistrer comme modèle » (même nom : le modèle est remplacé).</p>
       <div id="tpl-list"></div>
       <button class="btn sm" style="margin-top:8px" data-action="tpl-reset">Rétablir les modèles de départ</button>
     </details>
 
-    <details class="card chev set-sec" name="set">
+    <details class="card chev set-sec adv" name="set">
       <summary><h2>Disposition</h2></summary>
       <p class="muted hint" style="margin-top:0">Choisissez l'ordre des fenêtres de chaque page avec les flèches ↑ ↓.</p>
       <div class="grid2">
@@ -338,7 +340,7 @@
       <p class="muted" style="margin:8px 0 0;font-size:13px">Version <b id="app-version"></b> · vos séances ne sont pas effacées par la mise à jour.</p>
     </details>
 
-    <details class="card chev set-sec" name="set">
+    <details class="card chev set-sec adv" name="set">
       <summary><h2>Zone sensible</h2></summary>
       <p class="muted" style="margin-top:0">Efface toutes les séances de cet appareil. Cette action est définitive.</p>
       <button class="btn danger" data-action="reset"><span data-i="trash"></span>Tout supprimer</button>
