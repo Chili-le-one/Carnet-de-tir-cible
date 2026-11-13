@@ -156,14 +156,14 @@
 
   <!-- ============ STATISTIQUES ============ -->
   <section id="tab-stats" hidden>
-    <div class="card ord-fixed">
-      <h3 style="margin-bottom:8px">Filtrer l'analyse</h3>
-      <div class="filters">
+    <details class="card ord-fixed chev">
+      <summary><h3>Filtrer l'analyse</h3></summary>
+      <div class="filters" style="margin-top:8px">
         <label>Distance<select id="f-dist"></select></label>
         <label>Blason<select id="f-target"></select></label>
         <label id="f-bow-wrap" style="grid-column:1/-1" hidden>Arc<select id="f-bow"></select></label>
       </div>
-    </div>
+    </details>
     <div id="stats-empty" class="card empty ord-fixed" hidden>
       <h2>Pas encore de statistiques</h2>
       <p>Terminez une séance pour voir votre progression, la répartition de vos flèches et la carte de vos impacts.</p>
