@@ -40,7 +40,7 @@
       <div class="card" data-ord="statut">
         <div class="row between">
           <div class="row"><span class="chip" id="chip-dist"></span><span class="chip" id="chip-target"></span></div>
-          <div class="row"><button class="btn sm" id="btn-quick" data-action="quick-toggle">Saisie rapide</button><button class="btn sm" id="btn-finish" data-action="finish-early"><span data-i="flag"></span>Terminer</button></div>
+          <details class="opts"><summary>Options ⋯</summary><div class="row"><button class="btn sm" id="btn-quick" data-action="quick-toggle">Saisie rapide</button><button class="btn sm" id="btn-finish" data-action="finish-early"><span data-i="flag"></span>Terminer</button></div></details>
         </div>
         <div class="total"><span class="big" id="s-total">0</span><span class="muted" id="s-max"></span></div>
         <div id="s-proj" class="muted" style="font-size:14px;font-weight:650" hidden></div>
@@ -240,6 +240,7 @@
             <option value="auto">Thème d'origine (clair ou nuit selon le téléphone)</option>
             <option value="clair">Clair (d'origine)</option>
             <option value="nuit">Nuit (d'origine)</option>
+            <option value="epure">Épuré (fond uni, une couleur d'accent)</option>
             <option value="carnet">Carnet de terrain (papier, encre bleue)</option>
           </select>
         </label>
