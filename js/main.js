@@ -18,8 +18,10 @@ function init() {
   $('#app-version').textContent = APP_VERSION;
 
   if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+    const hadCtl = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadCtl) $('#update-banner').hidden = false; });
     navigator.serviceWorker.register('sw.js')
-      .then(() => navigator.serviceWorker.ready)
+      .then(reg => { document.addEventListener('visibilitychange', () => { if (!document.hidden) reg.update().catch(() => {}); }); return navigator.serviceWorker.ready; })
       .then(() => { $('#pwa-status').textContent = 'Fonctionne hors ligne : prête à être utilisée en salle sans réseau.'; })
       .catch(() => {});
   }

@@ -25,7 +25,7 @@ function setMode(m) {
 
 /* ---------- Actions (délégation d'événements) ---------- */
 
-const APP_VERSION = 'v34 · 13 nov. 2026';
+const APP_VERSION = 'v35 · 13 nov. 2026';
 let deferredInstall = null;
 
 const actions = {
@@ -49,6 +49,7 @@ const actions = {
   'cal-prev': () => calMove(-1),
   'cal-next': () => calMove(1),
   'cal-day': d => { app.cal.sel = d.d; renderCalendar(); },
+  'reload-app': () => location.reload(),
   'adv-toggle': () => {
     const on = !$('#tab-data').classList.contains('show-adv');
     $('#tab-data').classList.toggle('show-adv', on);

@@ -78,6 +78,10 @@ function toast(msg, kind) {
 
 /* ---------- Icônes (SVG intégrés, fonctionne hors ligne) ---------- */
 const ICONS = {
+  'tab-saisie': '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/>',
+  'tab-stats': '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  'tab-histo': '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
+  'tab-reglages': '<circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
   trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/>',
