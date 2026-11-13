@@ -25,7 +25,7 @@ function setMode(m) {
 
 /* ---------- Actions (délégation d'événements) ---------- */
 
-const APP_VERSION = 'v33 · 13 nov. 2026';
+const APP_VERSION = 'v34 · 13 nov. 2026';
 let deferredInstall = null;
 
 const actions = {
@@ -49,6 +49,12 @@ const actions = {
   'cal-prev': () => calMove(-1),
   'cal-next': () => calMove(1),
   'cal-day': d => { app.cal.sel = d.d; renderCalendar(); },
+  'adv-toggle': () => {
+    const on = !$('#tab-data').classList.contains('show-adv');
+    $('#tab-data').classList.toggle('show-adv', on);
+    $('#btn-adv').textContent = on ? 'Mode simple' : 'Tout afficher';
+    try { localStorage.setItem('carnet_tir_avances', on ? '1' : '0'); } catch (e) {}
+  },
   'vol-add': d => volAdd(d.d),
   'vol-del': d => volDel(d.id),
   'cal-contest-add': d => contestAdd(d.d),

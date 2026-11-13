@@ -258,6 +258,7 @@ function renderShoot() {
 
   $('#chip-dist').textContent = c.distance;
   $('#chip-target').textContent = targetLabel(c.targetType);
+  $('#chip-ends').textContent = `${allEnds(s) - T} volées × ${c.arrowsPerEnd}`;
   $('#btn-finish').hidden = !!s.finished;
   $('#s-total').textContent = st.total;
   $('#s-max').textContent = `/ ${st.max} pts`;
